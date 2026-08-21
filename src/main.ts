@@ -31,7 +31,7 @@ dir.position.set(5, 10, 7);
 scene.add(dir);
 
 const loader = new GLTFLoader();
-const modelUrl = `${import.meta.env.BASE_URL}kast.gltf?v=2`;
+const modelUrl = `${import.meta.env.BASE_URL}untitled.gltf?v=2`;
 const loadTimeout = window.setTimeout(() => {
   status.textContent = `Still loading ${modelUrl}. Check the browser console for GLTF errors.`;
   status.classList.add('error');
