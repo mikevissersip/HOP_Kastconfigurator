@@ -32,7 +32,12 @@ scene.add(dir);
 
 const loader = new GLTFLoader();
 const modelUrl = `${import.meta.env.BASE_URL}kast.gltf`;
+const loadTimeout = window.setTimeout(() => {
+  status.textContent = `Still loading ${modelUrl}. Check the browser console for GLTF errors.`;
+  status.classList.add('error');
+}, 10000);
 loader.load(modelUrl, (gltf) => {
+  window.clearTimeout(loadTimeout);
   const model = gltf.scene;
   scene.add(model);
   status.remove();
@@ -49,7 +54,12 @@ loader.load(modelUrl, (gltf) => {
   camera.position.set(distance, distance * 0.8, distance);
   controls.target.set(0, 0, 0);
   controls.update();
-}, undefined, (err: unknown) => {
+}, (progress) => {
+  if (progress.total > 0) {
+    status.textContent = `Loading kast.gltf... ${Math.round((progress.loaded / progress.total) * 100)}%`;
+  }
+}, (err: unknown) => {
+  window.clearTimeout(loadTimeout);
   console.error('Failed to load kast.gltf:', err);
   status.textContent = 'Could not load kast.gltf. Check that buffer.bin is also in public/.';
   status.classList.add('error');
