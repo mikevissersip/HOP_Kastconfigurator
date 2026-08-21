@@ -31,7 +31,7 @@ dir.position.set(5, 10, 7);
 scene.add(dir);
 
 const loader = new GLTFLoader();
-const modelUrl = new URL('kast.gltf', import.meta.env.BASE_URL).href;
+const modelUrl = `${import.meta.env.BASE_URL}kast.gltf`;
 loader.load(modelUrl, (gltf) => {
   const model = gltf.scene;
   scene.add(model);
