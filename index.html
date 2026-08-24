@@ -51,18 +51,30 @@
 
       <main class="content">
         <div class="viewer-grid">
-          <div 
+          <aside 
               id="viewer-stage-left"
-              class="viewer-stage-2"
+              class="viewer-stage-left"
               aria-label="Configurator">
-          </div>
+            <h2 class="panel-title">Kies kast</h2>
+
+            <div class="model-list" role="list" tabindex="0">
+              <button id="kast1-btn" class="model-btn active" data-model="kast.gltf" role="listitem">Rittal AX 1018000 1000x1000x300mm</button>
+              <button id="kast2-btn" class="model-btn" data-model="kast2.gltf" role="listitem">Rittal AX1012000 600x760x210mm</button>
+              <!-- add more model buttons here; the list will scroll if it becomes long -->
+            </div>
+
+            <div class="panel-footer">
+              <div id="selected-name" class="selected-name">Kast 1</div>
+              <button id="next-btn" class="next-btn">Volgende</button>
+            </div>
+          </aside>
           
           <div 
               id="viewer-stage"
               class="viewer-stage"
               aria-label="3D cabinet preview">
+              
           </div>
-        </div>
         </div>
 
       </main>

@@ -7,6 +7,8 @@
   --newsletter-blue: #39a4ef;
   --dark-blue: #0b3f7a;
   --text: #0d2948;
+  --HOP-orange: #f95430;
+  --HOP-Blue: #0267cc;
   --line: rgba(12, 27, 46, 0.08);
 }
 
@@ -145,35 +147,105 @@ a {
 }
 
 .content {
-  width: min(1880px, calc(100% - 52px));
-  height: 89vh;
-  margin: 32px auto 0;
+  width: min(1780px, calc(100% - 52px));
+  margin: 8px auto 0;
   padding-bottom: 28px;
 }
 
 .viewer-grid {
   display: grid;
-  grid-template-columns: 1.4fr 0.6fr;
-  gap: 32px;
-  height: 100%;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.viewer-stage-left {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  height: 640px;
+}
+
+.panel-title {
+  margin: 0 0 8px 0;
+  font-size: 1.05rem;
+  color: var(--nav-blue);
+}
+
+/* model list takes remaining vertical space and becomes scrollable when long */
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-right: 4px; /* for scrollbar breathing room */
+}
+
+.model-btn {
+  background: #fff;
+  border: 1px solid rgba(12,27,46,0.06);
+  padding: 10px 12px;
+  font-weight: 700;
+  color: var(--nav-blue);
+  cursor: pointer;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.model-btn.active {
+  background: var(--HOP-Blue);
+  color: #fff;
+}
+
+.model-btn:hover,
+.model-btn:focus {
+  background: var(--HOP-orange);
+  color: #fff;
+}
+
+/* footer inside the left panel with selected name and next button */
+.panel-footer {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.selected-name {
+  font-weight: 700;
+  color: var(--nav-blue);
+}
+
+.next-btn {
+  background: var(--nav-blue);
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.next-btn:active,
+.next-btn:focus {
+  outline: 2px solid rgba(15,45,76,0.12);
 }
 
 .viewer-stage {
   position: relative;
   width: 100%;
-  height: 60%;
+  height: 640px;
   background: #f5f5f5;
-  border-radius: 30px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(17, 42, 71, 0.04);
-}
-
-.viewer-stage-2 {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: #f5f5f5;
-  border-radius: 30px;
+  border-radius: 18px;
   overflow: hidden;
   box-shadow: inset 0 0 0 1px rgba(17, 42, 71, 0.04);
 }
