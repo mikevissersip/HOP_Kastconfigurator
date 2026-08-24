@@ -226,7 +226,7 @@ a {
 }
 
 .next-btn {
-  background: var(--nav-blue);
+  background: var(--HOP-orange);
   color: #fff;
   border: none;
   padding: 8px 14px;
@@ -364,7 +364,7 @@ a {
   }
 
   .viewer-stage {
-    height: 440px;
+    height: 340px;
     border-radius: 22px;
   }
 
@@ -373,8 +373,8 @@ a {
     height: 100%;
   }
   
-  .viewer-stage-2 {
-    height: 440px;
+  .viewer-stage-left {
+    height: 350px;
     border-radius: 22px;
   }
   /* show hamburger on small screens */

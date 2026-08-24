@@ -156,6 +156,8 @@ function loadModelFile(filename: string) {
 // wire up buttons
 const kast1 = document.getElementById('kast1-btn') as HTMLButtonElement | null;
 const kast2 = document.getElementById('kast2-btn') as HTMLButtonElement | null;
+const kast3 = document.getElementById('kast3-btn') as HTMLButtonElement | null;
+const kast4 = document.getElementById('kast4-btn') as HTMLButtonElement | null;
 const selectedNameEl = document.getElementById('selected-name');
 const nextBtn = document.getElementById('next-btn');
 
@@ -175,6 +177,16 @@ if (kast2) kast2.addEventListener('click', () => {
   const file = kast2.dataset.model || 'kast2.gltf';
   loadModelFile(file);
   setActiveButton(kast2);
+});
+if (kast3) kast3.addEventListener('click', () => {
+  const file = kast3.dataset.model || 'kast3.gltf';
+  loadModelFile(file);
+  setActiveButton(kast3);
+});
+if (kast4) kast4.addEventListener('click', () => {
+  const file = kast4.dataset.model || 'kast4.gltf';
+  loadModelFile(file);
+  setActiveButton(kast4);
 });
 
 if (nextBtn) {
