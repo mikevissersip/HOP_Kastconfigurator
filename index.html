@@ -27,23 +27,27 @@
                 alt="Hoppensbrouwers"
               />
             </a>
-          </div>
 
-          <nav class="main-nav" aria-label="Main navigation">
-            <!--<a href="#">Particulier</a>
-            <a href="#">Zakelijk</a>
-            <a href="#">Werken bij</a> -->
-            <a 
-              href="https://www.hoppenbrouwerstechniek.nl/vestiging/veenendaal/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Contact Hoppenbrouwers Veenendaal">
-              Contact
-            </a>
-          </nav>
-        </div>
+              <!-- hamburger button shown on small screens -->
+              <button class="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="main-nav" aria-haspopup="true">
+                <span class="hamburger-icon" aria-hidden="true">☰</span>
+              </button>
 
-      </header>
+              <nav id="main-nav" class="main-nav" aria-label="Main navigation">
+                <a href="#">Particulier</a>
+                <!--<a href="#">Zakelijk</a>
+                <a href="#">Werken bij</a> -->
+                <a 
+                  href="https://www.hoppenbrouwerstechniek.nl/vestiging/veenendaal/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Contact Hoppenbrouwers Veenendaal">
+                  Contact
+                </a>
+              </nav>
+            </div>
+
+        </header>
 
       <main class="content">
         <div id="viewer-stage" class="viewer-stage" aria-label="3D cabinet preview"></div>
@@ -51,5 +55,34 @@
     </div>
 
     <script type="module" src="/src/main.ts"></script>
+
+    <script>
+      // small menu toggle for the header hamburger
+      (function(){
+        const hamb = document.querySelector('.hamburger');
+        const nav = document.getElementById('main-nav');
+        if (!hamb || !nav) return;
+        hamb.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isOpen = nav.classList.toggle('open');
+          hamb.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+        // close when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!nav.classList.contains('open')) return;
+          if (!hamb.contains(e.target) && !nav.contains(e.target)) {
+            nav.classList.remove('open');
+            hamb.setAttribute('aria-expanded','false');
+          }
+        });
+        // close on escape
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            nav.classList.remove('open');
+            hamb.setAttribute('aria-expanded','false');
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
