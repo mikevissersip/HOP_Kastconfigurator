@@ -273,7 +273,7 @@ a {
   border: 1px solid rgba(12, 27, 46, 0.1);
   border-radius: 12px;
   background: linear-gradient(180deg, #f9fafb 0%, #eef3f7 100%);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .front-view-toolbar {
@@ -398,7 +398,7 @@ a {
   height: 30px;
   border: none;
   border-radius: 50%;
-  background: var(--HOP-Blue);
+  background: var(--HOP-orange);
   color: #fff;
   font-size: 1.25rem;
   line-height: 1;
@@ -424,9 +424,7 @@ a {
 }
 
 .component-menu {
-  position: absolute;
-  right: 12px;
-  top: 52px;
+  position: fixed;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -439,7 +437,7 @@ a {
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(12, 27, 46, 0.12);
   box-shadow: 0 12px 24px rgba(12, 27, 46, 0.12);
-  z-index: 30;
+  z-index: 60;
 }
 
 .component-menu[hidden],

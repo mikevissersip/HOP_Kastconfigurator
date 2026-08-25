@@ -247,13 +247,25 @@ const componentCatalog: ComponentCatalogItem[] = [
 const mountedComponents: MountedComponent[] = [];
 const frontViewZoomState = {
   value: 1,
-  min: 0.75,
-  max: 1.8,
+  min: 0.5,
+  max: 2.5,
 };
 
 function applyFrontViewZoom(nextValue: number) {
   if (!frontView2d) return;
-  const clamped = Math.min(Math.max(nextValue, frontViewZoomState.min), frontViewZoomState.max);
+
+  const contentWidth = 280;
+  const contentHeight = 200;
+  const maxByFrame = Math.max(
+    1,
+    Math.min(frontView2d.clientWidth / contentWidth, frontView2d.clientHeight / contentHeight)
+  );
+
+  const clamped = Math.min(
+    Math.max(nextValue, frontViewZoomState.min),
+    Math.min(frontViewZoomState.max, maxByFrame * 1.7)
+  );
+
   frontViewZoomState.value = clamped;
   frontView2d.style.setProperty('--front-zoom', clamped.toFixed(2));
 }
@@ -600,12 +612,30 @@ if (addComponentBtn && componentMenu) {
     });
   };
 
+  const positionComponentMenu = () => {
+    const btnRect = addComponentBtn.getBoundingClientRect();
+    const menuWidth = componentMenu.offsetWidth || 220;
+    const menuHeight = componentMenu.offsetHeight || 240;
+    const left = Math.min(Math.max(12, btnRect.right - menuWidth), window.innerWidth - menuWidth - 12);
+    const top = Math.min(Math.max(12, btnRect.bottom + 10), window.innerHeight - menuHeight - 12);
+
+    componentMenu.style.left = `${left}px`;
+    componentMenu.style.top = `${top}px`;
+    componentMenu.style.right = 'auto';
+  };
+
   addComponentBtn.addEventListener('click', (event) => {
     event.stopPropagation();
     componentMenu.hidden = !componentMenu.hidden;
-    if (componentMenu.hidden) {
+    if (!componentMenu.hidden) {
+      positionComponentMenu();
+    } else {
       closeAllComponentGroups();
     }
+  });
+
+  window.addEventListener('resize', () => {
+    if (!componentMenu.hidden) positionComponentMenu();
   });
 
   document.addEventListener('click', (event) => {
