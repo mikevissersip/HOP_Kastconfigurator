@@ -38,10 +38,19 @@ controls.maxDistance = 10;
 controls.autoRotate = true;
 controls.autoRotateSpeed = 1.5;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xbfc8d1, 1.4));
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-keyLight.position.set(-3, -2, 7);
-scene.add(keyLight);
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+const frontLight = new THREE.DirectionalLight(0xffffff, 1.3);
+frontLight.position.set(4, 4, 6);
+scene.add(frontLight);
+
+const backLight = new THREE.DirectionalLight(0xffffff, 0.9);
+backLight.position.set(-5, 3, -6);
+scene.add(backLight);
+
+const sideLight = new THREE.DirectionalLight(0xffffff, 0.75);
+sideLight.position.set(0, 6, 0);
+scene.add(sideLight);
 
 const loader = new GLTFLoader();
 let currentModel: THREE.Object3D | null = null;
@@ -153,18 +162,72 @@ function loadModelFile(filename: string) {
   );
 }
 
+type ConfiguratorStep = 1 | 2;
+
+interface SelectedCabinet {
+  id: string;
+  name: string;
+  modelFile: string;
+}
+
+interface SelectedDoor {
+  id: string;
+  name: string;
+  modelFile: string;
+}
+
+interface ConfiguratorState {
+  currentStep: ConfiguratorStep;
+  selectedCabinet: SelectedCabinet | null;
+  selectedDoor: SelectedDoor | null;
+}
+
+const configuratorState: ConfiguratorState = {
+  currentStep: 1,
+  selectedCabinet: null,
+  selectedDoor: null,
+};
+
 // wire up buttons
 const kast1 = document.getElementById('kast1-btn') as HTMLButtonElement | null;
 const kast2 = document.getElementById('kast2-btn') as HTMLButtonElement | null;
 const kast3 = document.getElementById('kast3-btn') as HTMLButtonElement | null;
 const selectedNameEl = document.getElementById('selected-name');
-const nextBtn = document.getElementById('next-btn');
+const selectedDoorNameEl = document.getElementById('selected-door-name');
+const step1NextBtn = document.getElementById('step1-next-btn') as HTMLButtonElement | null;
+const step2NextBtn = document.getElementById('step2-next-btn') as HTMLButtonElement | null;
+const backBtn = document.getElementById('back-btn') as HTMLButtonElement | null;
+const configStep1 = document.getElementById('config-step-1') as HTMLElement | null;
+const configStep2 = document.getElementById('config-step-2') as HTMLElement | null;
+
+const leftDoor  = document.getElementById('doorLeft-btn') as HTMLButtonElement | null;
+const rightDoor = document.getElementById('doorRight-btn') as HTMLButtonElement | null;
 
 function setActiveButton(btn: Element | null) {
   document.querySelectorAll('.model-btn').forEach((b) => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   const name = btn ? (btn.textContent || '').trim() : 'Geen selectie';
   if (selectedNameEl) selectedNameEl.textContent = name;
+}
+
+function setActiveDoorButton(btn: Element | null) {
+  document.querySelectorAll('.model-btn-door').forEach((b) => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const name = btn ? (btn.textContent || '').trim() : 'Geen selectie';
+  if (selectedDoorNameEl) selectedDoorNameEl.textContent = name;
+}
+
+function showStep(step: ConfiguratorStep) {
+  configuratorState.currentStep = step;
+  if (configStep1) configStep1.hidden = step !== 1;
+  if (configStep2) configStep2.hidden = step !== 2;
+}
+
+function applyDoorOrientation(isLeftHinge: boolean) {
+  if (!currentModel) return;
+  currentModel.scale.x = isLeftHinge ? -1 : 1;
+  currentModel.rotation.set(0, 0, 0);
+  currentModel.position.x = 0;
 }
 
 if (kast1) kast1.addEventListener('click', () => {
@@ -183,16 +246,46 @@ if (kast3) kast3.addEventListener('click', () => {
   setActiveButton(kast3);
 });
 
-if (nextBtn) {
-  nextBtn.addEventListener('click', () => {
-    const active = document.querySelector('.model-btn.active');
-    const name = active ? (active.textContent || '').trim() : '';
-    if (name) {
-      // placeholder behavior for "Volgende" - replace with actual navigation / flow
-      alert(`Volgende: ${name}`);
-      console.log('Next clicked for', name);
-    } else {
-      alert('Geen kast geselecteerd');
+if (leftDoor) {
+  leftDoor.addEventListener('click', () => {
+    configuratorState.selectedDoor = {
+      id: leftDoor.id,
+      name: leftDoor.textContent?.trim() || 'Deur links',
+      modelFile: leftDoor.dataset.door || 'door1.gltf',
+    };
+    setActiveDoorButton(leftDoor);
+    applyDoorOrientation(true);
+  });
+}
+
+if (rightDoor) {
+  rightDoor.addEventListener('click', () => {
+    configuratorState.selectedDoor = {
+      id: rightDoor.id,
+      name: rightDoor.textContent?.trim() || 'Deur rechts',
+      modelFile: rightDoor.dataset.door || 'door2.gltf',
+    };
+    setActiveDoorButton(rightDoor);
+    applyDoorOrientation(false);
+  });
+}
+
+if (step1NextBtn) {
+  step1NextBtn.addEventListener('click', () => {
+    showStep(2);
+  });
+}
+
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    showStep(1);
+  });
+}
+
+if (step2NextBtn) {
+  step2NextBtn.addEventListener('click', () => {
+    if (configuratorState.selectedDoor) {
+      console.log('Selected door:', configuratorState.selectedDoor.name);
     }
   });
 }
@@ -201,6 +294,9 @@ if (nextBtn) {
 const initialFile = (kast1 && kast1.dataset.model) ? kast1.dataset.model : 'kast.gltf';
 loadModelFile(initialFile);
 setActiveButton(kast1);
+showStep(1);
+
+if (leftDoor) setActiveDoorButton(leftDoor);
 
 const resizeRenderer = () => {
   const width = stage.clientWidth;
@@ -218,5 +314,6 @@ function animate() {
   controls.update();
   renderer.render(scene, camera);
 }
+
 
 animate();

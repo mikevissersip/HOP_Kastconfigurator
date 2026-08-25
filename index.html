@@ -55,19 +55,47 @@
               id="viewer-stage-left"
               class="viewer-stage-left"
               aria-label="Configurator">
-            <h2 class="panel-title">Kies gewenste kastbehuizing</h2>
 
-            <div class="model-list" role="list" tabindex="0">
-              <button id="kast1-btn" class="model-btn active" data-model="kast.gltf" role="listitem">Rittal AX 1018000 1000x1000x300mm</button>
-              <button id="kast2-btn" class="model-btn" data-model="kast2.gltf" role="listitem">Rittal AX 1012000 600x760x210mm</button>
-              <button id="kast3-btn" class="model-btn" data-model="kast3.gltf" role="listitem">Rittal AX 1003000 300x300x210mm</button>
-              <!-- add more model buttons here; the list will scroll if it becomes long -->
-            </div>
+            <section
+              id="config-step-1"
+               class="config-step config-step--selection active"
+               data-step="1"
+            >
+              <h2 class="panel-title">Kies gewenste kastbehuizing</h2>
 
-            <div class="panel-footer">
-              <div id="selected-name" class="selected-name">Kast 1</div>
-              <button id="next-btn" class="next-btn">Volgende</button>
-            </div>
+              <div class="model-list" role="list" tabindex="0">
+                <button id="kast1-btn" class="model-btn active" data-model="kast.gltf" role="listitem">Rittal AX 1018000 1000x1000x300mm</button>
+                <button id="kast2-btn" class="model-btn" data-model="kast2.gltf" role="listitem">Rittal AX 1012000 600x760x210mm</button>
+                <button id="kast3-btn" class="model-btn" data-model="kast3.gltf" role="listitem">Rittal AX 1003000 300x300x210mm</button>
+                <!-- add more model buttons here; the list will scroll if it becomes long -->
+              </div>
+
+              <div class="panel-footer">
+                <div id="selected-name" class="selected-name">Kast 1</div>
+                <button id="step1-next-btn" class="next-btn">Volgende</button>
+              </div>
+            </section>
+
+            <section
+              id="config-step-2"
+              class="config-step config-step--door"
+              data-step="2"
+              hidden
+            >
+              <h2 class="panel-title">Kies gewenste deurpositie</h2>
+              
+              <div class="model-btn-container">
+                <button id="doorLeft-btn" class="model-btn-door" data-door="door1.gltf" role="listitem">Deur links</button>
+                <button id="doorRight-btn" class="model-btn-door active" data-door="door2.gltf" role="listitem">Deur rechts</button>
+              </div>
+            
+              <div class="panel-footer">
+                <button id="back-btn" class="back-btn">Vorige</button>
+
+                <div id="selected-door-name" class="selected-name">Links</div>
+                
+                <button id="step2-next-btn" class="next-btn">Volgende</button>
+              </div>
           </aside>
           
           <div 
