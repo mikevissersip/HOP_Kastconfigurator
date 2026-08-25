@@ -273,7 +273,7 @@ a {
   border: 1px solid rgba(12, 27, 46, 0.1);
   border-radius: 12px;
   background: linear-gradient(180deg, #f9fafb 0%, #eef3f7 100%);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .front-view-toolbar {
@@ -432,11 +432,14 @@ a {
   gap: 8px;
   padding: 10px;
   min-width: 220px;
+  max-height: min(48vh, 300px);
+  overflow-y: auto;
+  overflow-x: hidden;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(12, 27, 46, 0.12);
   box-shadow: 0 12px 24px rgba(12, 27, 46, 0.12);
-  z-index: 5;
+  z-index: 30;
 }
 
 .component-menu[hidden],
@@ -710,7 +713,7 @@ a {
   }
   
   .viewer-stage-left {
-    height: 300px;
+    height: 340px;
     border-radius: 22px;
   }
   /* show hamburger on small screens */
@@ -735,6 +738,12 @@ a {
 
   .model-btn-door {
     font-size: 1rem;
+  }
+
+  .component-menu {
+    font-size: 0.8rem;
+    right: 5px;
+    top: 35px;
   }
 
 }
