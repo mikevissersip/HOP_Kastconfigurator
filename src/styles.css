@@ -423,7 +423,7 @@ a {
   }
 
   .viewer-stage {
-    height: 340px;
+    height: 250px;
     border-radius: 22px;
   }
 
@@ -433,7 +433,7 @@ a {
   }
   
   .viewer-stage-left {
-    height: 350px;
+    height: 290px;
     border-radius: 22px;
   }
   /* show hamburger on small screens */
