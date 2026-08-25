@@ -282,13 +282,15 @@ a {
   top: 12px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   z-index: 12;
 }
 
 .zoom-controls {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(12, 27, 46, 0.12);
@@ -298,19 +300,32 @@ a {
 }
 
 .zoom-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 50%;
   background: var(--HOP-Blue);
   color: #fff;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   line-height: 1;
+  font-weight: 700;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 0;
+  flex-shrink: 0;
+  font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+  text-align: center;
+  letter-spacing: 0;
+  position: relative;
+  top: 0;
+}
+
+.zoom-btn span,
+.add-component-btn span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .zoom-btn:hover,
@@ -379,16 +394,33 @@ a {
 }
 
 .add-component-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 50%;
   background: var(--HOP-Blue);
   color: #fff;
-  font-size: 1.8rem;
+  font-size: 1.25rem;
   line-height: 1;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: 0 6px 12px rgba(18, 45, 72, 0.2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+  text-align: center;
+  letter-spacing: 0;
+  position: relative;
+  top: 0;
+  padding: 0;
+}
+
+.add-component-btn span {
+  display: block;
+  line-height: 1;
+  position: relative;
+  top: -0.04em;
 }
 
 .component-menu {
