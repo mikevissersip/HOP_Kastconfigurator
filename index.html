@@ -96,6 +96,75 @@
                 
                 <button id="step2-next-btn" class="next-btn">Volgende</button>
               </div>
+           </section>
+
+           <section
+             id="config-step-3"
+             class="config-step config-step--components"
+             data-step="3"
+             hidden
+           >
+             <h2 class="panel-title">Plaats componenten op de voordeur</h2>
+
+             <div class="component-layout">
+               <div id="front-view-2d" class="front-view-2d" aria-label="Voorbeeld van de voorkant van de kast">
+                 <div class="front-view-toolbar" aria-label="Zoom en component toevoegen">
+                   <div class="zoom-controls" aria-label="Zoominstellingen">
+                     <button type="button" class="zoom-btn zoom-in" data-zoom-action="in" aria-label="Inzoomen">+</button>
+                     <button type="button" class="zoom-btn zoom-out" data-zoom-action="out" aria-label="Uitzoomen">−</button>
+                   </div>
+                   <button id="add-component-btn" class="add-component-btn" aria-label="Component toevoegen">+</button>
+                 </div>
+                 <div class="cabinet-face">
+                   <div id="door-panel" class="door-panel"></div>
+                   <div id="component-layer" class="component-layer"></div>
+                 </div>
+                 <div id="component-menu" class="component-menu" hidden>                   <div class="component-group">
+                     <button type="button" class="component-group-btn" data-group="hoofdschakelaars">
+                       <span>Hoofdschakelaars</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="hoofdschakelaar">EATON 057856 T0-1-8200/V/SVB</button>
+                     </div>
+                   </div>
+                   <div class="component-group">
+                     <button type="button" class="component-group-btn" data-group="zekeringen">
+                       <span>Zekeringen</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="zekering" disabled>Zekering (binnenkort)</button>
+                     </div>
+                   </div>
+                   <div class="component-group">
+                     <button type="button" class="component-group-btn" data-group="drukschakelaars">
+                       <span>Drukschakelaars</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="drukschakelaar" disabled>Drukschakelaar (binnenkort)</button>
+                     </div>
+                   </div>
+                   <div class="component-group">
+                     <button type="button" class="component-group-btn" data-group="signaalverlichting">
+                       <span>Signaalverlichting</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="signaallampje" disabled>Signaallampje (binnenkort)</button>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
+
+             <div class="panel-footer">
+              <button id="step3-back-btn" class="back-btn">Vorige</button>
+              <div id="selected-component-name" class="selected-name">Geen onderdeel</div>
+              <button id="step3-next-btn" class="next-btn">Volgende</button>
+             </div>
+           </section>
           </aside>
           
           <div 

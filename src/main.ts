@@ -5,6 +5,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 const stage = document.getElementById('viewer-stage');
 if (!stage) throw new Error('Viewer stage not found');
 
+const frontView2d = document.getElementById('front-view-2d') as HTMLDivElement | null;
+const frontViewCanvas = document.createElement('canvas');
+frontViewCanvas.className = 'front-view-canvas';
+if (frontView2d) {
+  frontView2d.prepend(frontViewCanvas);
+}
+
 // status indicator
 let status = document.querySelector('.status') as HTMLElement | null;
 if (!status) {
@@ -18,6 +25,31 @@ scene.background = new THREE.Color(0xfefefe);
 
 const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
 camera.position.set(3, 2.2, 4.3);
+
+const frontPreviewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas: frontViewCanvas });
+frontPreviewRenderer.setClearColor(0x000000, 0);
+frontPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+frontPreviewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+frontPreviewRenderer.toneMappingExposure = 0.9;
+
+const frontPreviewScene = new THREE.Scene();
+const frontPreviewCamera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
+frontPreviewCamera.position.set(0, 0, 2.5);
+frontPreviewCamera.lookAt(0, 0, 0);
+
+frontPreviewScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+
+const frontPreviewFrontLight = new THREE.DirectionalLight(0xffffff, 0.7);
+frontPreviewFrontLight.position.set(3, 2, 5);
+frontPreviewScene.add(frontPreviewFrontLight);
+
+const frontPreviewSideLight = new THREE.DirectionalLight(0xffffff, 0.45);
+frontPreviewSideLight.position.set(-4, 2, 3);
+frontPreviewScene.add(frontPreviewSideLight);
+
+const frontPreviewBackLight = new THREE.DirectionalLight(0xffffff, 0.35);
+frontPreviewBackLight.position.set(0, 3, -5);
+frontPreviewScene.add(frontPreviewBackLight);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setClearColor(0xfefefe, 1);
@@ -133,6 +165,7 @@ function loadModelFile(filename: string) {
 
       scene.add(model);
       currentModel = model;
+      updateFrontPreview();
 
       // center model and position camera
       const box = new THREE.Box3().setFromObject(model);
@@ -162,7 +195,7 @@ function loadModelFile(filename: string) {
   );
 }
 
-type ConfiguratorStep = 1 | 2;
+type ConfiguratorStep = 1 | 2 | 3;
 
 interface SelectedCabinet {
   id: string;
@@ -174,6 +207,22 @@ interface SelectedDoor {
   id: string;
   name: string;
   modelFile: string;
+}
+
+interface ComponentCatalogItem {
+  id: string;
+  name: string;
+  file?: string;
+}
+
+interface MountedComponent {
+  id: string;
+  name: string;
+  itemId: string;
+  x: number;
+  y: number;
+  mesh: THREE.Object3D | null;
+  marker: HTMLDivElement | null;
 }
 
 interface ConfiguratorState {
@@ -188,17 +237,48 @@ const configuratorState: ConfiguratorState = {
   selectedDoor: null,
 };
 
+const componentCatalog: ComponentCatalogItem[] = [
+  { id: 'hoofdschakelaar', name: 'Hoofdschakelaar', file: 'hoofdschakelaar.gltf' },
+  { id: 'zekering', name: 'Zekering' },
+  { id: 'drukschakelaar', name: 'Drukschakelaar' },
+  { id: 'signaallampje', name: 'Signaallampje' },
+];
+
+const mountedComponents: MountedComponent[] = [];
+const frontViewZoomState = {
+  value: 1,
+  min: 0.75,
+  max: 1.8,
+};
+
+function applyFrontViewZoom(nextValue: number) {
+  if (!frontView2d) return;
+  const clamped = Math.min(Math.max(nextValue, frontViewZoomState.min), frontViewZoomState.max);
+  frontViewZoomState.value = clamped;
+  frontView2d.style.setProperty('--front-zoom', clamped.toFixed(2));
+}
+
 // wire up buttons
 const kast1 = document.getElementById('kast1-btn') as HTMLButtonElement | null;
 const kast2 = document.getElementById('kast2-btn') as HTMLButtonElement | null;
 const kast3 = document.getElementById('kast3-btn') as HTMLButtonElement | null;
 const selectedNameEl = document.getElementById('selected-name');
 const selectedDoorNameEl = document.getElementById('selected-door-name');
+const selectedComponentNameEl = document.getElementById('selected-component-name');
 const step1NextBtn = document.getElementById('step1-next-btn') as HTMLButtonElement | null;
 const step2NextBtn = document.getElementById('step2-next-btn') as HTMLButtonElement | null;
+const step3BackBtn = document.getElementById('step3-back-btn') as HTMLButtonElement | null;
+const step3NextBtn = document.getElementById('step3-next-btn') as HTMLButtonElement | null;
 const backBtn = document.getElementById('back-btn') as HTMLButtonElement | null;
 const configStep1 = document.getElementById('config-step-1') as HTMLElement | null;
 const configStep2 = document.getElementById('config-step-2') as HTMLElement | null;
+const configStep3 = document.getElementById('config-step-3') as HTMLElement | null;
+const addComponentBtn = document.getElementById('add-component-btn') as HTMLButtonElement | null;
+const zoomInBtn = document.querySelector('.zoom-in') as HTMLButtonElement | null;
+const zoomOutBtn = document.querySelector('.zoom-out') as HTMLButtonElement | null;
+const componentMenu = document.getElementById('component-menu') as HTMLDivElement | null;
+const componentLayer = document.getElementById('component-layer') as HTMLDivElement | null;
+const doorPanel = document.getElementById('door-panel') as HTMLDivElement | null;
 
 const leftDoor  = document.getElementById('doorLeft-btn') as HTMLButtonElement | null;
 const rightDoor = document.getElementById('doorRight-btn') as HTMLButtonElement | null;
@@ -221,6 +301,17 @@ function showStep(step: ConfiguratorStep) {
   configuratorState.currentStep = step;
   if (configStep1) configStep1.hidden = step !== 1;
   if (configStep2) configStep2.hidden = step !== 2;
+  if (configStep3) configStep3.hidden = step !== 3;
+  if (componentMenu) componentMenu.hidden = true;
+}
+
+function updateDoorPanelLayout() {
+  if (!doorPanel) return;
+  const isLeftDoor = configuratorState.selectedDoor?.id === 'doorLeft-btn';
+  doorPanel.style.left = isLeftDoor ? '0%' : '50%';
+  doorPanel.style.width = '50%';
+  doorPanel.style.borderLeft = isLeftDoor ? 'none' : '3px solid rgba(12, 27, 46, 0.28)';
+  doorPanel.style.borderRight = isLeftDoor ? '3px solid rgba(12, 27, 46, 0.28)' : 'none';
 }
 
 function applyDoorOrientation(isLeftHinge: boolean) {
@@ -228,20 +319,195 @@ function applyDoorOrientation(isLeftHinge: boolean) {
   currentModel.scale.x = isLeftHinge ? -1 : 1;
   currentModel.rotation.set(0, 0, 0);
   currentModel.position.x = 0;
+  updateDoorPanelLayout();
+  updateFrontPreview();
+}
+
+function updateFrontPreview() {
+  if (!frontView2d || !frontViewCanvas || !currentModel) return;
+
+  const rect = frontView2d.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+
+  frontViewCanvas.width = Math.max(1, Math.round(width * window.devicePixelRatio));
+  frontViewCanvas.height = Math.max(1, Math.round(height * window.devicePixelRatio));
+  frontPreviewRenderer.setSize(width, height, false);
+  frontPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  frontPreviewScene.clear();
+  frontPreviewScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  frontPreviewScene.add(frontPreviewFrontLight);
+  frontPreviewScene.add(frontPreviewSideLight);
+  frontPreviewScene.add(frontPreviewBackLight);
+
+  const cloned = currentModel.clone(true);
+  cloned.rotation.set(0, 0, 0);
+  cloned.scale.set( configuratorState.selectedDoor?.id === 'doorLeft-btn' ? -1 : 1, 1, 1 );
+
+  const box = new THREE.Box3().setFromObject(cloned);
+  const center = box.getCenter(new THREE.Vector3());
+  cloned.position.sub(center);
+
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const distance = Math.max(2.2, maxDim * 2.2);
+  frontPreviewCamera.position.set(0, 0, distance);
+  frontPreviewCamera.lookAt(0, 0, 0);
+  frontPreviewCamera.aspect = width / height;
+  frontPreviewCamera.updateProjectionMatrix();
+
+  frontPreviewScene.add(cloned);
+  frontPreviewRenderer.render(frontPreviewScene, frontPreviewCamera);
+}
+
+function clearMountedComponents() {
+  mountedComponents.forEach((item) => {
+    if (item.mesh && item.mesh.parent) item.mesh.parent.remove(item.mesh);
+    if (item.marker && item.marker.parentNode) item.marker.parentNode.removeChild(item.marker);
+  });
+  mountedComponents.length = 0;
+  if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
+}
+
+function convert2DTo3D(x: number, y: number) {
+  if (!currentModel) {
+    return new THREE.Vector3(0, 0, 0.15);
+  }
+
+  const box = new THREE.Box3().setFromObject(currentModel);
+  const size = box.getSize(new THREE.Vector3());
+  const targetX = THREE.MathUtils.lerp(-size.x * 0.28, size.x * 0.28, x);
+  const targetY = THREE.MathUtils.lerp(size.y * 0.28, -size.y * 0.28, y);
+  return new THREE.Vector3(targetX, targetY, size.z * 0.56);
+}
+
+function syncComponentPosition(component: MountedComponent) {
+  const marker = component.marker;
+  if (marker) {
+    marker.style.left = `${Math.min(Math.max(component.x, 0), 1) * 100}%`;
+    marker.style.top = `${Math.min(Math.max(component.y, 0), 1) * 100}%`;
+  }
+
+  if (component.mesh) {
+    component.mesh.position.copy(convert2DTo3D(component.x, component.y));
+  }
+  updateFrontPreview();
+}
+
+function setComponentSelectionLabel(name: string) {
+  if (selectedComponentNameEl) selectedComponentNameEl.textContent = name;
+  updateFrontPreview();
+}
+
+function createFallbackComponentMesh() {
+  const group = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x5f7cff,
+    metalness: 0.25,
+    roughness: 0.5,
+  });
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.03), material);
+  group.add(box);
+  return group;
+}
+
+function createComponentMarker(item: ComponentCatalogItem, component: MountedComponent) {
+  const marker = document.createElement('div');
+  marker.className = 'component-marker';
+  marker.setAttribute('tabindex', '0');
+  marker.title = item.name;
+  marker.textContent = '•';
+  marker.dataset.componentId = component.id;
+
+  const beginDrag = (event: PointerEvent) => {
+    event.preventDefault();
+    const dragComponent = mountedComponents.find((entry) => entry.id === component.id);
+    if (!dragComponent || !frontView2d) return;
+
+    const move = (moveEvent: PointerEvent) => {
+      const rect = frontView2d.getBoundingClientRect();
+      const px = (moveEvent.clientX - rect.left) / rect.width;
+      const py = (moveEvent.clientY - rect.top) / rect.height;
+      dragComponent.x = Math.min(Math.max(px, 0.08), 0.92);
+      dragComponent.y = Math.min(Math.max(py, 0.08), 0.92);
+      syncComponentPosition(dragComponent);
+    };
+
+    const stop = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+  };
+
+  marker.addEventListener('pointerdown', beginDrag);
+  if (componentLayer) componentLayer.appendChild(marker);
+  component.marker = marker;
+}
+
+function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
+  const componentId = `${item.id}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const component: MountedComponent = {
+    id: componentId,
+    name: item.name,
+    itemId: item.id,
+    x,
+    y,
+    mesh: null,
+    marker: null,
+  };
+
+  mountedComponents.push(component);
+  createComponentMarker(item, component);
+  syncComponentPosition(component);
+  setComponentSelectionLabel(item.name);
+
+  const attachMesh = (mesh: THREE.Object3D) => {
+    if (!currentModel) return;
+    mesh.position.copy(convert2DTo3D(component.x, component.y));
+    mesh.rotation.set(0, Math.PI, 0);
+    currentModel.add(mesh);
+    component.mesh = mesh;
+    updateFrontPreview();
+  };
+
+  if (item.file) {
+    const url = `${import.meta.env.BASE_URL}${item.file}`;
+    loader.load(
+      url,
+      (gltf) => {
+        const model = gltf.scene;
+        model.scale.setScalar(0.25);
+        attachMesh(model);
+      },
+      undefined,
+      () => {
+        attachMesh(createFallbackComponentMesh());
+      }
+    );
+  } else {
+    attachMesh(createFallbackComponentMesh());
+  }
 }
 
 if (kast1) kast1.addEventListener('click', () => {
   const file = kast1.dataset.model || 'kast.gltf';
+  clearMountedComponents();
   loadModelFile(file);
   setActiveButton(kast1);
 });
 if (kast2) kast2.addEventListener('click', () => {
   const file = kast2.dataset.model || 'kast2.gltf';
+  clearMountedComponents();
   loadModelFile(file);
   setActiveButton(kast2);
 });
 if (kast3) kast3.addEventListener('click', () => {
   const file = kast3.dataset.model || 'kast3.gltf';
+  clearMountedComponents();
   loadModelFile(file);
   setActiveButton(kast3);
 });
@@ -255,6 +521,7 @@ if (leftDoor) {
     };
     setActiveDoorButton(leftDoor);
     applyDoorOrientation(true);
+    updateDoorPanelLayout();
   });
 }
 
@@ -267,6 +534,7 @@ if (rightDoor) {
     };
     setActiveDoorButton(rightDoor);
     applyDoorOrientation(false);
+    updateDoorPanelLayout();
   });
 }
 
@@ -284,9 +552,97 @@ if (backBtn) {
 
 if (step2NextBtn) {
   step2NextBtn.addEventListener('click', () => {
-    if (configuratorState.selectedDoor) {
-      console.log('Selected door:', configuratorState.selectedDoor.name);
+    showStep(3);
+  });
+}
+
+if (step3BackBtn) {
+  step3BackBtn.addEventListener('click', () => {
+    showStep(2);
+  });
+}
+
+if (step3NextBtn) {
+  step3NextBtn.addEventListener('click', () => {
+    console.log('Stap 3 bevestigd');
+  });
+}
+
+if (frontView2d) {
+  applyFrontViewZoom(1);
+  frontView2d.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? -0.1 : 0.1;
+    applyFrontViewZoom(frontViewZoomState.value + delta);
+  }, { passive: false });
+}
+
+if (zoomInBtn) {
+  zoomInBtn.addEventListener('click', () => {
+    applyFrontViewZoom(frontViewZoomState.value + 0.1);
+  });
+}
+
+if (zoomOutBtn) {
+  zoomOutBtn.addEventListener('click', () => {
+    applyFrontViewZoom(frontViewZoomState.value - 0.1);
+  });
+}
+
+if (addComponentBtn && componentMenu) {
+  const closeAllComponentGroups = () => {
+    componentMenu.querySelectorAll('.component-submenu').forEach((submenu) => {
+      submenu.hidden = true;
+      submenu.classList.remove('is-open');
+    });
+    componentMenu.querySelectorAll('.component-group-btn .chevron').forEach((icon) => {
+      (icon as HTMLElement).style.transform = 'rotate(0deg)';
+    });
+  };
+
+  addComponentBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    componentMenu.hidden = !componentMenu.hidden;
+    if (componentMenu.hidden) {
+      closeAllComponentGroups();
     }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!componentMenu.hidden && !componentMenu.contains(event.target as Node) && !addComponentBtn.contains(event.target as Node)) {
+      componentMenu.hidden = true;
+      closeAllComponentGroups();
+    }
+  });
+
+  componentMenu.querySelectorAll('.component-group-btn').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const group = button.parentElement?.querySelector('.component-submenu') as HTMLDivElement | null;
+      const chevron = button.querySelector('.chevron') as HTMLElement | null;
+      if (!group || !chevron) return;
+
+      const isOpen = !group.hidden;
+      closeAllComponentGroups();
+
+      if (!isOpen) {
+        group.hidden = false;
+        group.classList.add('is-open');
+        chevron.style.transform = 'rotate(90deg)';
+      }
+    });
+  });
+
+  componentMenu.querySelectorAll('.component-option').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if ((button as HTMLButtonElement).disabled) return;
+      const itemId = (button as HTMLButtonElement).dataset.component || 'hoofdschakelaar';
+      const item = componentCatalog.find((entry) => entry.id === itemId) || componentCatalog[0];
+      addComponentToScene(item, 0.5, 0.5);
+      componentMenu.hidden = true;
+      closeAllComponentGroups();
+    });
   });
 }
 
@@ -296,7 +652,16 @@ loadModelFile(initialFile);
 setActiveButton(kast1);
 showStep(1);
 
-if (rightDoor) setActiveDoorButton(rightDoor);
+if (rightDoor) {
+  setActiveDoorButton(rightDoor);
+  configuratorState.selectedDoor = {
+    id: rightDoor.id,
+    name: rightDoor.textContent?.trim() || 'Deur rechts',
+    modelFile: rightDoor.dataset.door || 'door2.gltf',
+  };
+  applyDoorOrientation(false);
+updateDoorPanelLayout();
+}
 
 const resizeRenderer = () => {
   const width = stage.clientWidth;
@@ -313,6 +678,7 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
   renderer.render(scene, camera);
+  updateFrontPreview();
 }
 
 
