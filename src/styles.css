@@ -366,6 +366,7 @@ a {
   .viewer-stage {
     height: 340px;
     border-radius: 22px;
+    font-size: 0.1rem;
   }
 
   .viewer-grid {
