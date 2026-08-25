@@ -425,7 +425,6 @@ a {
   .viewer-stage {
     height: 340px;
     border-radius: 22px;
-    font-size: 0.1rem;
   }
 
   .viewer-grid {
@@ -440,6 +439,21 @@ a {
   /* show hamburger on small screens */
   .hamburger {
     display: inline-flex;
+  }
+
+  .model-btn{
+    font-size: 0.8rem;
+  }
+
+  .panel-title {
+    font-size: 0.9rem;
+  }
+  .back-btn,
+  .next-btn {
+    font-size: 0.8rem;
+  }
+  .selected-name {
+    font-size: 0.8rem;
   }
 
 }
