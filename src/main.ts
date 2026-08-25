@@ -296,7 +296,7 @@ loadModelFile(initialFile);
 setActiveButton(kast1);
 showStep(1);
 
-if (leftDoor) setActiveDoorButton(leftDoor);
+if (rightDoor) setActiveDoorButton(rightDoor);
 
 const resizeRenderer = () => {
   const width = stage.clientWidth;
