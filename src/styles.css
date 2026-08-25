@@ -328,9 +328,11 @@ a {
   transform: translateY(-1px);
 }
 
-.zoom-btn:hover,
-.zoom-btn:focus {
+.zoom-btn:hover{
   background: var(--HOP-orange);
+  outline: none;
+}
+.zoom-btn:focus {
   outline: none;
 }
 
