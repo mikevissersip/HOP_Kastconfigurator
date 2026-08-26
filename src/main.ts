@@ -407,7 +407,7 @@ function convert2DTo3D(x: number, y: number, placeInFront = false) {
   const size = box.getSize(new THREE.Vector3());
   const targetX = THREE.MathUtils.lerp(-size.x * 0.28, size.x * 0.28, x);
   const targetY = THREE.MathUtils.lerp(size.y * 0.28, -size.y * 0.28, y);
-  const frontOffset = placeInFront ? size.z * -0.35 : 0;
+  const frontOffset = placeInFront ? size.z * -0.47 : 0;
   const targetWorldPosition = new THREE.Vector3(targetX, targetY, size.z * 0.56 + frontOffset);
   currentModel.updateMatrixWorld(true);
   return currentModel.worldToLocal(targetWorldPosition);
