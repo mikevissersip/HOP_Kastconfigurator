@@ -213,6 +213,17 @@ interface ComponentCatalogItem {
   id: string;
   name: string;
   file?: string;
+  placement: ComponentPlacement;
+}
+
+interface ComponentPlacement {
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  rotation: [number, number, number];
+  scale: number;
 }
 
 interface MountedComponent {
@@ -221,6 +232,7 @@ interface MountedComponent {
   itemId: string;
   x: number;
   y: number;
+  placement: ComponentPlacement;
   mesh: THREE.Object3D | null;
   marker: HTMLDivElement | null;
 }
@@ -238,13 +250,48 @@ const configuratorState: ConfiguratorState = {
 };
 
 const componentCatalog: ComponentCatalogItem[] = [
-  { id: 'hoofdschakelaar', name: 'Hoofdschakelaar', file: 'hoofdschakelaar.gltf' },
-  { id: 'zekering', name: 'Zekering' },
-  { id: 'drukschakelaar', name: 'Drukschakelaar' },
-  { id: 'signaallampje', name: 'Signaallampje' },
+  {
+    id: 'hoofdschakelaar',
+    name: 'Hoofdschakelaar',
+    file: 'hoofdschakelaar.gltf',
+    placement: {
+      position: { x: 0.5, y: 0.5, z: -0.47 },
+      rotation: [3.13, Math.PI, 0],
+      scale: 1,
+    },
+  },
+  {
+    id: 'zekering',
+    name: 'Zekering',
+    placement: {
+      position: { x: 0.5, y: 0.5, z: 0 },
+      rotation: [0, 0, 0],
+      scale: 0.25,
+    },
+  },
+  {
+    id: 'drukschakelaar',
+    name: 'Drukschakelaar',
+    placement: {
+      position: { x: 0.5, y: 0.5, z: 0 },
+      rotation: [0, 0, 0],
+      scale: 0.25,
+    },
+  },
+  {
+    id: 'signaallampje',
+    name: 'Signaallampje',
+    file: 'signaallamp_groen.gltf',
+    placement: {
+      position: { x: 0.64, y: 0.51, z: -0.08 },
+      rotation: [1.57, 0, 0],
+      scale: 1,
+    },
+  },
 ];
 
 const mountedComponents: MountedComponent[] = [];
+let selectedComponent: MountedComponent | null = null;
 const frontViewZoomState = {
   value: 1,
   min: 0.5,
@@ -277,6 +324,7 @@ const kast3 = document.getElementById('kast3-btn') as HTMLButtonElement | null;
 const selectedNameEl = document.getElementById('selected-name');
 const selectedDoorNameEl = document.getElementById('selected-door-name');
 const selectedComponentNameEl = document.getElementById('selected-component-name');
+const deleteComponentBtn = document.getElementById('delete-component-btn') as HTMLButtonElement | null;
 const step1NextBtn = document.getElementById('step1-next-btn') as HTMLButtonElement | null;
 const step2NextBtn = document.getElementById('step2-next-btn') as HTMLButtonElement | null;
 const step3BackBtn = document.getElementById('step3-back-btn') as HTMLButtonElement | null;
@@ -373,11 +421,13 @@ function updateFrontPreview() {
   cloned.updateMatrixWorld(true);
 
   const componentWorldPosition = new THREE.Vector3();
+  const componentBounds = new THREE.Box3();
   const projectedPosition = new THREE.Vector3();
   mountedComponents.forEach((component) => {
     if (!component.mesh || !component.marker) return;
 
-    component.mesh.getWorldPosition(componentWorldPosition);
+    componentBounds.setFromObject(component.mesh);
+    componentBounds.getCenter(componentWorldPosition);
     const clonedPosition = cloned.worldToLocal(componentWorldPosition.clone());
     cloned.localToWorld(clonedPosition);
     projectedPosition.copy(clonedPosition).project(frontPreviewCamera);
@@ -395,10 +445,35 @@ function clearMountedComponents() {
     if (item.marker && item.marker.parentNode) item.marker.parentNode.removeChild(item.marker);
   });
   mountedComponents.length = 0;
+  selectedComponent = null;
+  if (deleteComponentBtn) deleteComponentBtn.disabled = true;
   if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
 }
 
-function convert2DTo3D(x: number, y: number, placeInFront = false) {
+function selectComponent(component: MountedComponent) {
+  selectedComponent = component;
+  mountedComponents.forEach((entry) => entry.marker?.classList.toggle('is-selected', entry === component));
+  if (deleteComponentBtn) deleteComponentBtn.disabled = false;
+  setComponentSelectionLabel(component.name);
+}
+
+function deleteSelectedComponent() {
+  if (!selectedComponent) return;
+
+  const componentIndex = mountedComponents.indexOf(selectedComponent);
+  if (componentIndex === -1) return;
+
+  const component = mountedComponents[componentIndex];
+  if (component.mesh?.parent) component.mesh.parent.remove(component.mesh);
+  if (component.marker?.parentNode) component.marker.parentNode.removeChild(component.marker);
+  mountedComponents.splice(componentIndex, 1);
+  selectedComponent = null;
+  if (deleteComponentBtn) deleteComponentBtn.disabled = true;
+  if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
+  updateFrontPreview();
+}
+
+function convert2DTo3D(x: number, y: number, depthOffset = 0) {
   if (!currentModel) {
     return new THREE.Vector3(0, 0, 0.15);
   }
@@ -407,8 +482,7 @@ function convert2DTo3D(x: number, y: number, placeInFront = false) {
   const size = box.getSize(new THREE.Vector3());
   const targetX = THREE.MathUtils.lerp(-size.x * 0.28, size.x * 0.28, x);
   const targetY = THREE.MathUtils.lerp(size.y * 0.28, -size.y * 0.28, y);
-  const frontOffset = placeInFront ? size.z * -0.47 : 0;
-  const targetWorldPosition = new THREE.Vector3(targetX, targetY, size.z * 0.56 + frontOffset);
+  const targetWorldPosition = new THREE.Vector3(targetX, targetY, size.z * 0.56 + size.z * depthOffset);
   currentModel.updateMatrixWorld(true);
   return currentModel.worldToLocal(targetWorldPosition);
 }
@@ -421,7 +495,7 @@ function syncComponentPosition(component: MountedComponent) {
   }
 
   if (component.mesh) {
-    component.mesh.position.copy(convert2DTo3D(component.x, component.y, component.itemId === 'hoofdschakelaar'));
+    component.mesh.position.copy(convert2DTo3D(component.x, component.y, component.placement.position.z));
   }
   updateFrontPreview();
 }
@@ -456,14 +530,19 @@ function createComponentMarker(item: ComponentCatalogItem, component: MountedCom
     const dragComponent = mountedComponents.find((entry) => entry.id === component.id);
     if (!dragComponent || !componentLayer) return;
 
+    selectComponent(dragComponent);
+    const startX = dragComponent.x;
+    const startY = dragComponent.y;
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
     marker.setPointerCapture(event.pointerId);
 
     const move = (moveEvent: PointerEvent) => {
       const rect = componentLayer.getBoundingClientRect();
-      const px = (moveEvent.clientX - rect.left) / rect.width;
-      const py = (moveEvent.clientY - rect.top) / rect.height;
-      dragComponent.x = Math.min(Math.max(px, 0.08), 0.92);
-      dragComponent.y = Math.min(Math.max(py, 0.08), 0.92);
+      const deltaX = (moveEvent.clientX - startClientX) / rect.width;
+      const deltaY = (moveEvent.clientY - startClientY) / rect.height;
+      dragComponent.x = Math.min(Math.max(startX + deltaX, 0.08), 0.92);
+      dragComponent.y = Math.min(Math.max(startY + deltaY, 0.08), 0.92);
       syncComponentPosition(dragComponent);
     };
 
@@ -485,7 +564,11 @@ function createComponentMarker(item: ComponentCatalogItem, component: MountedCom
   component.marker = marker;
 }
 
-function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
+function addComponentToScene(
+  item: ComponentCatalogItem,
+  x = item.placement.position.x,
+  y = item.placement.position.y
+) {
   const componentId = `${item.id}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const component: MountedComponent = {
     id: componentId,
@@ -493,6 +576,7 @@ function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
     itemId: item.id,
     x,
     y,
+    placement: item.placement,
     mesh: null,
     marker: null,
   };
@@ -500,12 +584,13 @@ function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
   mountedComponents.push(component);
   createComponentMarker(item, component);
   syncComponentPosition(component);
-  setComponentSelectionLabel(item.name);
+  selectComponent(component);
 
   const attachMesh = (mesh: THREE.Object3D) => {
-    if (!currentModel) return;
-    mesh.position.copy(convert2DTo3D(component.x, component.y, component.itemId === 'hoofdschakelaar'));
-    mesh.rotation.set(3.13, Math.PI, 0);
+    if (!currentModel || !mountedComponents.includes(component)) return;
+    mesh.position.copy(convert2DTo3D(component.x, component.y, component.placement.position.z));
+    mesh.rotation.set(...component.placement.rotation);
+    mesh.scale.setScalar(component.placement.scale);
     currentModel.add(mesh);
     component.mesh = mesh;
     updateFrontPreview();
@@ -517,7 +602,6 @@ function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
       url,
       (gltf) => {
         const model = gltf.scene;
-        model.scale.setScalar(item.id === 'hoofdschakelaar' ? 1 : 0.25);
         attachMesh(model);
       },
       undefined,
@@ -528,6 +612,10 @@ function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
   } else {
     attachMesh(createFallbackComponentMesh());
   }
+}
+
+if (deleteComponentBtn) {
+  deleteComponentBtn.addEventListener('click', deleteSelectedComponent);
 }
 
 if (kast1) kast1.addEventListener('click', () => {
@@ -694,7 +782,7 @@ if (addComponentBtn && componentMenu) {
       if ((button as HTMLButtonElement).disabled) return;
       const itemId = (button as HTMLButtonElement).dataset.component || 'hoofdschakelaar';
       const item = componentCatalog.find((entry) => entry.id === itemId) || componentCatalog[0];
-      addComponentToScene(item, 0.5, 0.5);
+      addComponentToScene(item);
       componentMenu.hidden = true;
       closeAllComponentGroups();
     });

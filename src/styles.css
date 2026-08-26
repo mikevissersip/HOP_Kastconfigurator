@@ -399,6 +399,11 @@ a {
   cursor: grabbing;
 }
 
+.component-marker.is-selected {
+  outline: 3px solid var(--nav-blue);
+  outline-offset: 2px;
+}
+
 .add-component-btn {
   width: 30px;
   height: 30px;
@@ -427,6 +432,35 @@ a {
   line-height: 1;
   position: relative;
   top: -0.04em;
+}
+
+.delete-component-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: #c74242;
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(18, 45, 72, 0.2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.delete-component-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.delete-component-btn img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
 }
 
 .component-menu {
