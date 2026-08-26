@@ -378,15 +378,15 @@ a {
 
 .component-marker {
   position: absolute;
-  width: 22px;
-  height: 22px;
+  width: 10px;
+  height: 10px;
   transform: translate(-50%, -50%) scale(calc(1 / var(--front-zoom)));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 300%;
   background: var(--HOP-orange);
-  color: #fff;
+  color: #ffffff;
   font-size: 1.1rem;
   font-weight: 700;
   cursor: grab;
