@@ -238,7 +238,7 @@ const configuratorState: ConfiguratorState = {
 };
 
 const componentCatalog: ComponentCatalogItem[] = [
-  { id: 'hoofdschakelaar', name: 'Hoofdschakelaar', file: 'hoofdschakelaar.gltf' },
+  { id: 'hoofdschakelaar', name: 'Hoofdschakelaar', file: 'Hoofdschakelaar.gltf' },
   { id: 'zekering', name: 'Zekering' },
   { id: 'drukschakelaar', name: 'Drukschakelaar' },
   { id: 'signaallampje', name: 'Signaallampje' },
@@ -370,6 +370,22 @@ function updateFrontPreview() {
   frontPreviewCamera.updateProjectionMatrix();
 
   frontPreviewScene.add(cloned);
+  cloned.updateMatrixWorld(true);
+
+  const componentWorldPosition = new THREE.Vector3();
+  const projectedPosition = new THREE.Vector3();
+  mountedComponents.forEach((component) => {
+    if (!component.mesh || !component.marker) return;
+
+    component.mesh.getWorldPosition(componentWorldPosition);
+    const clonedPosition = cloned.worldToLocal(componentWorldPosition.clone());
+    cloned.localToWorld(clonedPosition);
+    projectedPosition.copy(clonedPosition).project(frontPreviewCamera);
+
+    component.marker.style.left = `${(projectedPosition.x + 1) * 50}%`;
+    component.marker.style.top = `${(1 - projectedPosition.y) * 50}%`;
+  });
+
   frontPreviewRenderer.render(frontPreviewScene, frontPreviewCamera);
 }
 
@@ -382,7 +398,7 @@ function clearMountedComponents() {
   if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
 }
 
-function convert2DTo3D(x: number, y: number) {
+function convert2DTo3D(x: number, y: number, placeInFront = false) {
   if (!currentModel) {
     return new THREE.Vector3(0, 0, 0.15);
   }
@@ -391,7 +407,10 @@ function convert2DTo3D(x: number, y: number) {
   const size = box.getSize(new THREE.Vector3());
   const targetX = THREE.MathUtils.lerp(-size.x * 0.28, size.x * 0.28, x);
   const targetY = THREE.MathUtils.lerp(size.y * 0.28, -size.y * 0.28, y);
-  return new THREE.Vector3(targetX, targetY, size.z * 0.56);
+  const frontOffset = placeInFront ? size.z * -0.35 : 0;
+  const targetWorldPosition = new THREE.Vector3(targetX, targetY, size.z * 0.56 + frontOffset);
+  currentModel.updateMatrixWorld(true);
+  return currentModel.worldToLocal(targetWorldPosition);
 }
 
 function syncComponentPosition(component: MountedComponent) {
@@ -402,7 +421,7 @@ function syncComponentPosition(component: MountedComponent) {
   }
 
   if (component.mesh) {
-    component.mesh.position.copy(convert2DTo3D(component.x, component.y));
+    component.mesh.position.copy(convert2DTo3D(component.x, component.y, component.itemId === 'hoofdschakelaar'));
   }
   updateFrontPreview();
 }
@@ -435,10 +454,12 @@ function createComponentMarker(item: ComponentCatalogItem, component: MountedCom
   const beginDrag = (event: PointerEvent) => {
     event.preventDefault();
     const dragComponent = mountedComponents.find((entry) => entry.id === component.id);
-    if (!dragComponent || !frontView2d) return;
+    if (!dragComponent || !componentLayer) return;
+
+    marker.setPointerCapture(event.pointerId);
 
     const move = (moveEvent: PointerEvent) => {
-      const rect = frontView2d.getBoundingClientRect();
+      const rect = componentLayer.getBoundingClientRect();
       const px = (moveEvent.clientX - rect.left) / rect.width;
       const py = (moveEvent.clientY - rect.top) / rect.height;
       dragComponent.x = Math.min(Math.max(px, 0.08), 0.92);
@@ -447,12 +468,16 @@ function createComponentMarker(item: ComponentCatalogItem, component: MountedCom
     };
 
     const stop = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', stop);
+      marker.removeEventListener('pointermove', move);
+      marker.removeEventListener('pointerup', stop);
+      marker.removeEventListener('pointercancel', stop);
+      marker.removeEventListener('lostpointercapture', stop);
     };
 
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', stop);
+    marker.addEventListener('pointermove', move);
+    marker.addEventListener('pointerup', stop);
+    marker.addEventListener('pointercancel', stop);
+    marker.addEventListener('lostpointercapture', stop);
   };
 
   marker.addEventListener('pointerdown', beginDrag);
@@ -479,8 +504,8 @@ function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
 
   const attachMesh = (mesh: THREE.Object3D) => {
     if (!currentModel) return;
-    mesh.position.copy(convert2DTo3D(component.x, component.y));
-    mesh.rotation.set(0, Math.PI, 0);
+    mesh.position.copy(convert2DTo3D(component.x, component.y, component.itemId === 'hoofdschakelaar'));
+    mesh.rotation.set(3.13, Math.PI, 0);
     currentModel.add(mesh);
     component.mesh = mesh;
     updateFrontPreview();
@@ -492,7 +517,7 @@ function addComponentToScene(item: ComponentCatalogItem, x = 0.5, y = 0.5) {
       url,
       (gltf) => {
         const model = gltf.scene;
-        model.scale.setScalar(0.25);
+        model.scale.setScalar(item.id === 'hoofdschakelaar' ? 1 : 0.25);
         attachMesh(model);
       },
       undefined,

@@ -342,8 +342,7 @@ a {
 
 .front-view-canvas,
 .cabinet-face,
-.door-panel,
-.component-layer {
+.door-panel {
   transform: scale(var(--front-zoom));
   transform-origin: center center;
 }
@@ -360,8 +359,7 @@ a {
 .cabinet-face {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  pointer-events: none;
+  z-index: 2;
 }
 
 .door-panel {
@@ -375,13 +373,14 @@ a {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  pointer-events: auto;
 }
 
 .component-marker {
   position: absolute;
   width: 22px;
   height: 22px;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(calc(1 / var(--front-zoom)));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -393,6 +392,7 @@ a {
   cursor: grab;
   box-shadow: 0 6px 14px rgba(12, 27, 46, 0.18);
   user-select: none;
+  touch-action: none;
 }
 
 .component-marker:active {
