@@ -238,7 +238,7 @@ const configuratorState: ConfiguratorState = {
 };
 
 const componentCatalog: ComponentCatalogItem[] = [
-  { id: 'hoofdschakelaar', name: 'Hoofdschakelaar', file: 'Hoofdschakelaar.gltf' },
+  { id: 'hoofdschakelaar', name: 'Hoofdschakelaar', file: 'hoofdschakelaar.gltf' },
   { id: 'zekering', name: 'Zekering' },
   { id: 'drukschakelaar', name: 'Drukschakelaar' },
   { id: 'signaallampje', name: 'Signaallampje' },
