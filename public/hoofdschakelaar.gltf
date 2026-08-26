@@ -1,1 +1,139 @@
-{"asset":{"generator":"step-to-gltf","version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0,"name":"Hoofdschakelaar"}],"meshes":[{"name":"Hoofdschakelaar","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":0,"mode":4}]}],"materials":[{"doubleSided":true,"pbrMetallicRoughness":{"baseColorFactor":[0.69,0.69,0.69,1.0],"metallicFactor":0}}],"accessors":[{"type":"VEC3","componentType":5126,"count":59524,"max":[0.0325,0.0325,0.11600000000000002],"min":[-0.0325,-0.0325,-0.005],"bufferView":0},{"type":"VEC3","componentType":5126,"count":59524,"bufferView":1},{"type":"SCALAR","componentType":5125,"count":170400,"bufferView":2}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":714288},{"buffer":0,"byteOffset":714288,"byteLength":714288},{"buffer":0,"byteOffset":1428576,"byteLength":681600}],"buffers":[{"byteLength":2110176,"uri":"Hoofdschakelaar.bin"}]}
+{
+  "asset": {
+    "generator": "gltfeditor.com",
+    "version": "2.0"
+  },
+  "buffers": [
+    {
+      "uri": "Hoofdschakelaar.bin",
+      "byteLength": 2110176
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 714288,
+      "byteStride": 12,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 714288,
+      "byteLength": 714288,
+      "byteStride": 12,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 1428576,
+      "byteLength": 681600,
+      "target": 34963
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "normalized": false,
+      "count": 59524,
+      "min": [
+        -0.032499998807907104,
+        -0.032499998807907104,
+        -0.004999999888241291
+      ],
+      "max": [
+        0.032499998807907104,
+        0.032499998807907104,
+        0.11599999666213989
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "normalized": false,
+      "count": 59524,
+      "min": [
+        -1,
+        -1,
+        -1
+      ],
+      "max": [
+        1,
+        1,
+        1
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "normalized": false,
+      "count": 170400,
+      "min": [
+        0
+      ],
+      "max": [
+        59523
+      ],
+      "type": "SCALAR"
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ],
+      "name": "Hoofdschakelaar"
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Hoofdschakelaar",
+      "mesh": 0
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "material": 0,
+          "mode": 4,
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1
+          },
+          "indices": 2
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.38823529411764707,
+          0,
+          0,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 1
+      },
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ],
+      "alphaMode": "OPAQUE",
+      "doubleSided": true
+    }
+  ],
+  "extensions": {}
+}
