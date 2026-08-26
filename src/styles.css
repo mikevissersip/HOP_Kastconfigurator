@@ -104,6 +104,10 @@ a {
   margin-left: auto;
 }
 
+.main-nav a:hover {
+  color:#ac2e12;
+}
+
 .main-nav a {
   color: #e94f2d;
   text-decoration: none;
