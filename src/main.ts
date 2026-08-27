@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { cabinetCatalog } from './cabinetCatalog';
 
 const stage = document.getElementById('viewer-stage');
 if (!stage) throw new Error('Viewer stage not found');
@@ -349,9 +350,7 @@ function applyFrontViewZoom(nextValue: number) {
 }
 
 // wire up buttons
-const kast1 = document.getElementById('kast1-btn') as HTMLButtonElement | null;
-const kast2 = document.getElementById('kast2-btn') as HTMLButtonElement | null;
-const kast3 = document.getElementById('kast3-btn') as HTMLButtonElement | null;
+const cabinetList = document.getElementById('cabinet-list') as HTMLDivElement | null;
 const selectedNameEl = document.getElementById('selected-name');
 const selectedDoorNameEl = document.getElementById('selected-door-name');
 const selectedComponentNameEl = document.getElementById('selected-component-name');
@@ -389,6 +388,15 @@ function getMountedComponents() {
   return mountedComponents;
 }
 
+function getAllMountedComponents() {
+  return [
+    ...mountedComponents,
+    ...mountedGlands,
+    ...mountedLeftSideComponents,
+    ...mountedRightSideComponents,
+  ];
+}
+
 function getSelectedNameEl() {
   if (configuratorState.currentStep === 4) return selectedGlandNameEl;
   if (configuratorState.currentStep === 5) return selectedSideLeftNameEl;
@@ -410,7 +418,7 @@ function updateComponentMenuForStep() {
 
 function renderActiveComponents() {
   const activeComponents = getMountedComponents();
-  [...mountedComponents, ...mountedGlands].forEach((component) => {
+  getAllMountedComponents().forEach((component) => {
     if (component.marker) component.marker.remove();
   });
   activeComponents.forEach((component) => {
@@ -498,6 +506,11 @@ function updateFrontPreview() {
   const cloned = currentModel.clone(true);
   cloned.rotation.set(0, 0, 0);
   cloned.scale.set( configuratorState.selectedDoor?.id === 'doorLeft-btn' ? -1 : 1, 1, 1 );
+  const visibleComponentIds = new Set(getMountedComponents().map((component) => component.id));
+  cloned.traverse((object) => {
+    const componentId = object.userData.mountedComponentId as string | undefined;
+    if (componentId) object.visible = visibleComponentIds.has(componentId);
+  });
 
   const box = new THREE.Box3().setFromObject(cloned);
   const center = box.getCenter(new THREE.Vector3());
@@ -709,6 +722,7 @@ function addComponentToScene(
     mesh.position.copy(convert2DTo3D(component.x, component.y, component.placement.position.z));
     mesh.rotation.set(...component.placement.rotation);
     mesh.scale.setScalar(component.placement.scale);
+    mesh.userData.mountedComponentId = component.id;
     currentModel.add(mesh);
     component.mesh = mesh;
     updateFrontPreview();
@@ -736,24 +750,30 @@ if (deleteComponentBtn) {
   deleteComponentBtn.addEventListener('click', deleteSelectedComponent);
 }
 
-if (kast1) kast1.addEventListener('click', () => {
-  const file = kast1.dataset.model || 'kast.gltf';
-  clearMountedComponents();
-  loadModelFile(file);
-  setActiveButton(kast1);
-});
-if (kast2) kast2.addEventListener('click', () => {
-  const file = kast2.dataset.model || 'kast2.gltf';
-  clearMountedComponents();
-  loadModelFile(file);
-  setActiveButton(kast2);
-});
-if (kast3) kast3.addEventListener('click', () => {
-  const file = kast3.dataset.model || 'kast3.gltf';
-  clearMountedComponents();
-  loadModelFile(file);
-  setActiveButton(kast3);
-});
+function createCabinetButtons() {
+  if (!cabinetList) return;
+
+  cabinetCatalog.forEach((cabinet, index) => {
+    const button = document.createElement('button');
+    button.id = `cabinet-${cabinet.id}`;
+    button.className = 'model-btn';
+    button.dataset.model = cabinet.modelFile;
+    button.setAttribute('role', 'listitem');
+    button.textContent = cabinet.name;
+    button.addEventListener('click', () => {
+      clearMountedComponents();
+      loadModelFile(cabinet.modelFile);
+      configuratorState.selectedCabinet = cabinet;
+      setActiveButton(button);
+    });
+    cabinetList.appendChild(button);
+
+    if (index === 0) {
+      button.classList.add('active');
+      configuratorState.selectedCabinet = cabinet;
+    }
+  });
+}
 
 if (leftDoor) {
   leftDoor.addEventListener('click', () => {
@@ -926,9 +946,11 @@ if (addComponentBtn && componentMenu) {
 }
 
 // initial model
-const initialFile = (kast1 && kast1.dataset.model) ? kast1.dataset.model : 'kast.gltf';
+createCabinetButtons();
+const initialCabinet = cabinetCatalog[0];
+const initialFile = initialCabinet?.modelFile || 'kast.gltf';
 loadModelFile(initialFile);
-setActiveButton(kast1);
+if (cabinetList?.firstElementChild) setActiveButton(cabinetList.firstElementChild);
 showStep(1);
 
 if (rightDoor) {
