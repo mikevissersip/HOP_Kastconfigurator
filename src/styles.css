@@ -269,6 +269,12 @@ a {
   min-height: 0;
 }
 
+.component-layout-host {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .front-view-2d {
   --front-zoom: 1;
   position: relative;
@@ -481,7 +487,8 @@ a {
 }
 
 .component-menu[hidden],
-.component-submenu[hidden] {
+.component-submenu[hidden],
+.component-group[hidden] {
   display: none !important;
 }
 

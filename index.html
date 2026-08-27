@@ -156,6 +156,33 @@
                        <button type="button" class="component-option" data-component="signaallampje">Schneider Electric - pilot light - green</button>
                      </div>
                    </div>
+                   <div class="component-group" data-step4-only>
+                     <button type="button" class="component-group-btn" data-group="wartels">
+                       <span>Wartels</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="wartel">Wartel (model toevoegen)</button>
+                     </div>
+                   </div>
+                   <div class="component-group" data-side-view-only>
+                     <button type="button" class="component-group-btn" data-group="verwarming">
+                       <span>Verwarming</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="verwarming">Verwarmingsmodel (model toevoegen)</button>
+                     </div>
+                   </div>
+                   <div class="component-group" data-side-view-only>
+                     <button type="button" class="component-group-btn" data-group="ventilatie">
+                       <span>Ventilatie</span>
+                       <span class="chevron" aria-hidden="true">▸</span>
+                     </button>
+                     <div class="component-submenu" hidden>
+                       <button type="button" class="component-option" data-component="ventilatie">Ventilatiemodel (model toevoegen)</button>
+                     </div>
+                   </div>
                  </div>
                </div>
              </div>
@@ -164,6 +191,41 @@
               <button id="step3-back-btn" class="back-btn">Vorige</button>
               <div id="selected-component-name" class="selected-name">Geen onderdeel</div>
               <button id="step3-next-btn" class="next-btn">Volgende</button>
+             </div>
+           </section>
+
+           <section
+             id="config-step-4"
+             class="config-step config-step--components"
+             data-step="4"
+             hidden
+           >
+             <h2 class="panel-title">Plaats wartels aan de onderzijde van de kast</h2>
+             <div id="step4-component-host" class="component-layout-host"></div>
+             <div class="panel-footer">
+              <button id="step4-back-btn" class="back-btn">Vorige</button>
+              <div id="selected-gland-name" class="selected-name">Geen wartel</div>
+              <button id="step4-next-btn" class="next-btn">Volgende</button>
+             </div>
+           </section>
+
+           <section id="config-step-5" class="config-step config-step--components" data-step="5" hidden>
+             <h2 class="panel-title">Plaats componenten op het linkerzijaanzicht</h2>
+             <div id="step5-component-host" class="component-layout-host"></div>
+             <div class="panel-footer">
+              <button id="step5-back-btn" class="back-btn">Vorige</button>
+              <div id="selected-side-left-name" class="selected-name">Geen onderdeel</div>
+              <button id="step5-next-btn" class="next-btn">Volgende</button>
+             </div>
+           </section>
+
+           <section id="config-step-6" class="config-step config-step--components" data-step="6" hidden>
+             <h2 class="panel-title">Plaats componenten op het rechterzijaanzicht</h2>
+             <div id="step6-component-host" class="component-layout-host"></div>
+             <div class="panel-footer">
+              <button id="step6-back-btn" class="back-btn">Vorige</button>
+              <div id="selected-side-right-name" class="selected-name">Geen onderdeel</div>
+              <button id="step6-next-btn" class="next-btn">Volgende</button>
              </div>
            </section>
           </aside>

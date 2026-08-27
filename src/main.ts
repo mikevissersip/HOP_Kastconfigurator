@@ -112,7 +112,7 @@ function setStatus(text: string, isError = false) {
   if (!status) return;
   status.textContent = text;
   status.classList.toggle('error', isError);
-  if (!document.body.contains(status)) stage.appendChild(status);
+  if (!document.body.contains(status)) stage!.appendChild(status);
 }
 
 function loadModelFile(filename: string) {
@@ -195,7 +195,8 @@ function loadModelFile(filename: string) {
   );
 }
 
-type ConfiguratorStep = 1 | 2 | 3;
+type ConfiguratorStep = 1 | 2 | 3 | 4 | 5 | 6;
+type ComponentView = 'front' | 'bottom' | 'left' | 'right';
 
 interface SelectedCabinet {
   id: string;
@@ -290,8 +291,38 @@ const componentCatalog: ComponentCatalogItem[] = [
   },
 ];
 
+const glandCatalog: ComponentCatalogItem[] = [
+  {
+    id: 'wartel',
+    name: 'Wartel',
+    placement: {
+      position: { x: 0.5, y: 0.5, z: 0 },
+      rotation: [0, 0, 0],
+      scale: 0.25,
+    },
+  },
+];
+
+const sideComponentCatalog: ComponentCatalogItem[] = [
+  {
+    id: 'verwarming',
+    name: 'Verwarmingsmodel',
+    placement: { position: { x: 0.5, y: 0.5, z: 0 }, rotation: [0, 0, 0], scale: 0.25 },
+  },
+  {
+    id: 'ventilatie',
+    name: 'Ventilatiemodel',
+    placement: { position: { x: 0.5, y: 0.5, z: 0 }, rotation: [0, 0, 0], scale: 0.25 },
+  },
+];
+
 const mountedComponents: MountedComponent[] = [];
+const mountedGlands: MountedComponent[] = [];
+const mountedLeftSideComponents: MountedComponent[] = [];
+const mountedRightSideComponents: MountedComponent[] = [];
 let selectedComponent: MountedComponent | null = null;
+let componentLayout: HTMLDivElement | null = null;
+let componentView: ComponentView = 'front';
 const frontViewZoomState = {
   value: 1,
   min: 0.5,
@@ -324,6 +355,9 @@ const kast3 = document.getElementById('kast3-btn') as HTMLButtonElement | null;
 const selectedNameEl = document.getElementById('selected-name');
 const selectedDoorNameEl = document.getElementById('selected-door-name');
 const selectedComponentNameEl = document.getElementById('selected-component-name');
+const selectedGlandNameEl = document.getElementById('selected-gland-name');
+const selectedSideLeftNameEl = document.getElementById('selected-side-left-name');
+const selectedSideRightNameEl = document.getElementById('selected-side-right-name');
 const deleteComponentBtn = document.getElementById('delete-component-btn') as HTMLButtonElement | null;
 const step1NextBtn = document.getElementById('step1-next-btn') as HTMLButtonElement | null;
 const step2NextBtn = document.getElementById('step2-next-btn') as HTMLButtonElement | null;
@@ -333,12 +367,56 @@ const backBtn = document.getElementById('back-btn') as HTMLButtonElement | null;
 const configStep1 = document.getElementById('config-step-1') as HTMLElement | null;
 const configStep2 = document.getElementById('config-step-2') as HTMLElement | null;
 const configStep3 = document.getElementById('config-step-3') as HTMLElement | null;
+const configStep4 = document.getElementById('config-step-4') as HTMLElement | null;
+const step4ComponentHost = document.getElementById('step4-component-host') as HTMLDivElement | null;
+const configStep5 = document.getElementById('config-step-5') as HTMLElement | null;
+const configStep6 = document.getElementById('config-step-6') as HTMLElement | null;
+const step5ComponentHost = document.getElementById('step5-component-host') as HTMLDivElement | null;
+const step6ComponentHost = document.getElementById('step6-component-host') as HTMLDivElement | null;
 const addComponentBtn = document.getElementById('add-component-btn') as HTMLButtonElement | null;
 const zoomInBtn = document.querySelector('.zoom-in') as HTMLButtonElement | null;
 const zoomOutBtn = document.querySelector('.zoom-out') as HTMLButtonElement | null;
 const componentMenu = document.getElementById('component-menu') as HTMLDivElement | null;
 const componentLayer = document.getElementById('component-layer') as HTMLDivElement | null;
 const doorPanel = document.getElementById('door-panel') as HTMLDivElement | null;
+componentLayout = document.querySelector('.component-layout') as HTMLDivElement | null;
+const step3Footer = configStep3?.querySelector('.panel-footer') || null;
+
+function getMountedComponents() {
+  if (configuratorState.currentStep === 4) return mountedGlands;
+  if (configuratorState.currentStep === 5) return mountedLeftSideComponents;
+  if (configuratorState.currentStep === 6) return mountedRightSideComponents;
+  return mountedComponents;
+}
+
+function getSelectedNameEl() {
+  if (configuratorState.currentStep === 4) return selectedGlandNameEl;
+  if (configuratorState.currentStep === 5) return selectedSideLeftNameEl;
+  if (configuratorState.currentStep === 6) return selectedSideRightNameEl;
+  return selectedComponentNameEl;
+}
+
+function updateComponentMenuForStep() {
+  if (!componentMenu) return;
+  componentMenu.querySelectorAll<HTMLElement>('.component-group').forEach((group) => {
+    const isStep3 = configuratorState.currentStep === 3;
+    const isStep4 = configuratorState.currentStep === 4;
+    const isSideView = configuratorState.currentStep === 5 || configuratorState.currentStep === 6;
+    group.hidden = group.hasAttribute('data-step4-only') ? !isStep4
+      : group.hasAttribute('data-side-view-only') ? !isSideView
+      : !isStep3;
+  });
+}
+
+function renderActiveComponents() {
+  const activeComponents = getMountedComponents();
+  [...mountedComponents, ...mountedGlands].forEach((component) => {
+    if (component.marker) component.marker.remove();
+  });
+  activeComponents.forEach((component) => {
+    if (component.marker && componentLayer) componentLayer.appendChild(component.marker);
+  });
+}
 
 const leftDoor  = document.getElementById('doorLeft-btn') as HTMLButtonElement | null;
 const rightDoor = document.getElementById('doorRight-btn') as HTMLButtonElement | null;
@@ -362,7 +440,23 @@ function showStep(step: ConfiguratorStep) {
   if (configStep1) configStep1.hidden = step !== 1;
   if (configStep2) configStep2.hidden = step !== 2;
   if (configStep3) configStep3.hidden = step !== 3;
+  if (configStep4) configStep4.hidden = step !== 4;
+  if (configStep5) configStep5.hidden = step !== 5;
+  if (configStep6) configStep6.hidden = step !== 6;
+  if (componentLayout && step4ComponentHost && step5ComponentHost && step6ComponentHost) {
+    if (step === 4) step4ComponentHost.appendChild(componentLayout);
+    else if (step === 5) step5ComponentHost.appendChild(componentLayout);
+    else if (step === 6) step6ComponentHost.appendChild(componentLayout);
+    else if (configStep3 && step3Footer) configStep3.insertBefore(componentLayout, step3Footer);
+  }
+  componentView = step === 4 ? 'bottom' : step === 5 ? 'left' : step === 6 ? 'right' : 'front';
   if (componentMenu) componentMenu.hidden = true;
+  updateComponentMenuForStep();
+  selectedComponent = null;
+  if (deleteComponentBtn) deleteComponentBtn.disabled = true;
+  const selectedName = getSelectedNameEl();
+  if (selectedName) selectedName.textContent = step === 4 ? 'Geen wartel' : 'Geen onderdeel';
+  renderActiveComponents();
 }
 
 function updateDoorPanelLayout() {
@@ -412,7 +506,16 @@ function updateFrontPreview() {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   const distance = Math.max(2.2, maxDim * 2.2);
-  frontPreviewCamera.position.set(0, 0, distance);
+  if (componentView === 'bottom') {
+    frontPreviewCamera.position.set(0, -distance, 0);
+    frontPreviewCamera.up.set(0, 0, 1);
+  } else if (componentView === 'left' || componentView === 'right') {
+    frontPreviewCamera.position.set(componentView === 'left' ? -distance : distance, 0, 0);
+    frontPreviewCamera.up.set(0, 1, 0);
+  } else {
+    frontPreviewCamera.position.set(0, 0, distance);
+    frontPreviewCamera.up.set(0, 1, 0);
+  }
   frontPreviewCamera.lookAt(0, 0, 0);
   frontPreviewCamera.aspect = width / height;
   frontPreviewCamera.updateProjectionMatrix();
@@ -423,7 +526,7 @@ function updateFrontPreview() {
   const componentWorldPosition = new THREE.Vector3();
   const componentBounds = new THREE.Box3();
   const projectedPosition = new THREE.Vector3();
-  mountedComponents.forEach((component) => {
+  getMountedComponents().forEach((component) => {
     if (!component.mesh || !component.marker) return;
 
     componentBounds.setFromObject(component.mesh);
@@ -440,19 +543,23 @@ function updateFrontPreview() {
 }
 
 function clearMountedComponents() {
-  mountedComponents.forEach((item) => {
+  [...mountedComponents, ...mountedGlands].forEach((item) => {
     if (item.mesh && item.mesh.parent) item.mesh.parent.remove(item.mesh);
     if (item.marker && item.marker.parentNode) item.marker.parentNode.removeChild(item.marker);
   });
   mountedComponents.length = 0;
+  mountedGlands.length = 0;
+  mountedLeftSideComponents.length = 0;
+  mountedRightSideComponents.length = 0;
   selectedComponent = null;
   if (deleteComponentBtn) deleteComponentBtn.disabled = true;
   if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
+  if (selectedGlandNameEl) selectedGlandNameEl.textContent = 'Geen wartel';
 }
 
 function selectComponent(component: MountedComponent) {
   selectedComponent = component;
-  mountedComponents.forEach((entry) => entry.marker?.classList.toggle('is-selected', entry === component));
+  getMountedComponents().forEach((entry) => entry.marker?.classList.toggle('is-selected', entry === component));
   if (deleteComponentBtn) deleteComponentBtn.disabled = false;
   setComponentSelectionLabel(component.name);
 }
@@ -460,16 +567,18 @@ function selectComponent(component: MountedComponent) {
 function deleteSelectedComponent() {
   if (!selectedComponent) return;
 
-  const componentIndex = mountedComponents.indexOf(selectedComponent);
+  const activeComponents = getMountedComponents();
+  const componentIndex = activeComponents.indexOf(selectedComponent);
   if (componentIndex === -1) return;
 
-  const component = mountedComponents[componentIndex];
+  const component = activeComponents[componentIndex];
   if (component.mesh?.parent) component.mesh.parent.remove(component.mesh);
   if (component.marker?.parentNode) component.marker.parentNode.removeChild(component.marker);
-  mountedComponents.splice(componentIndex, 1);
+  activeComponents.splice(componentIndex, 1);
   selectedComponent = null;
   if (deleteComponentBtn) deleteComponentBtn.disabled = true;
-  if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
+  const selectedName = getSelectedNameEl();
+  if (selectedName) selectedName.textContent = configuratorState.currentStep === 4 ? 'Geen wartel' : 'Geen onderdeel';
   updateFrontPreview();
 }
 
@@ -482,7 +591,15 @@ function convert2DTo3D(x: number, y: number, depthOffset = 0) {
   const size = box.getSize(new THREE.Vector3());
   const targetX = THREE.MathUtils.lerp(-size.x * 0.28, size.x * 0.28, x);
   const targetY = THREE.MathUtils.lerp(size.y * 0.28, -size.y * 0.28, y);
-  const targetWorldPosition = new THREE.Vector3(targetX, targetY, size.z * 0.56 + size.z * depthOffset);
+  const targetWorldPosition = componentView === 'bottom'
+    ? new THREE.Vector3(targetX, -size.y * 0.5 - size.y * depthOffset, THREE.MathUtils.lerp(size.z * 0.35, -size.z * 0.35, y))
+    : componentView === 'left' || componentView === 'right'
+      ? new THREE.Vector3(
+        (componentView === 'left' ? -1 : 1) * (size.x * 0.5 + size.x * depthOffset),
+        targetY,
+        THREE.MathUtils.lerp(-size.z * 0.35, size.z * 0.35, x)
+      )
+      : new THREE.Vector3(targetX, targetY, size.z * 0.56 + size.z * depthOffset);
   currentModel.updateMatrixWorld(true);
   return currentModel.worldToLocal(targetWorldPosition);
 }
@@ -501,7 +618,8 @@ function syncComponentPosition(component: MountedComponent) {
 }
 
 function setComponentSelectionLabel(name: string) {
-  if (selectedComponentNameEl) selectedComponentNameEl.textContent = name;
+  const selectedName = getSelectedNameEl();
+  if (selectedName) selectedName.textContent = name;
   updateFrontPreview();
 }
 
@@ -527,7 +645,7 @@ function createComponentMarker(item: ComponentCatalogItem, component: MountedCom
 
   const beginDrag = (event: PointerEvent) => {
     event.preventDefault();
-    const dragComponent = mountedComponents.find((entry) => entry.id === component.id);
+    const dragComponent = getMountedComponents().find((entry) => entry.id === component.id);
     if (!dragComponent || !componentLayer) return;
 
     selectComponent(dragComponent);
@@ -581,13 +699,13 @@ function addComponentToScene(
     marker: null,
   };
 
-  mountedComponents.push(component);
+  getMountedComponents().push(component);
   createComponentMarker(item, component);
   syncComponentPosition(component);
   selectComponent(component);
 
   const attachMesh = (mesh: THREE.Object3D) => {
-    if (!currentModel || !mountedComponents.includes(component)) return;
+    if (!currentModel || !getMountedComponents().includes(component)) return;
     mesh.position.copy(convert2DTo3D(component.x, component.y, component.placement.position.z));
     mesh.rotation.set(...component.placement.rotation);
     mesh.scale.setScalar(component.placement.scale);
@@ -689,9 +807,23 @@ if (step3BackBtn) {
 
 if (step3NextBtn) {
   step3NextBtn.addEventListener('click', () => {
-    console.log('Stap 3 bevestigd');
+    showStep(4);
   });
 }
+
+const step4BackBtn = document.getElementById('step4-back-btn') as HTMLButtonElement | null;
+const step4NextBtn = document.getElementById('step4-next-btn') as HTMLButtonElement | null;
+if (step4BackBtn) step4BackBtn.addEventListener('click', () => showStep(3));
+if (step4NextBtn) step4NextBtn.addEventListener('click', () => showStep(5));
+
+const step5BackBtn = document.getElementById('step5-back-btn') as HTMLButtonElement | null;
+const step5NextBtn = document.getElementById('step5-next-btn') as HTMLButtonElement | null;
+const step6BackBtn = document.getElementById('step6-back-btn') as HTMLButtonElement | null;
+const step6NextBtn = document.getElementById('step6-next-btn') as HTMLButtonElement | null;
+if (step5BackBtn) step5BackBtn.addEventListener('click', () => showStep(4));
+if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
+if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
+if (step6NextBtn) step6NextBtn.addEventListener('click', () => console.log('Stap 6 bevestigd'));
 
 if (frontView2d) {
   applyFrontViewZoom(1);
@@ -716,7 +848,7 @@ if (zoomOutBtn) {
 
 if (addComponentBtn && componentMenu) {
   const closeAllComponentGroups = () => {
-    componentMenu.querySelectorAll('.component-submenu').forEach((submenu) => {
+    componentMenu.querySelectorAll<HTMLDivElement>('.component-submenu').forEach((submenu) => {
       submenu.hidden = true;
       submenu.classList.remove('is-open');
     });
@@ -780,8 +912,12 @@ if (addComponentBtn && componentMenu) {
     button.addEventListener('click', (event) => {
       event.stopPropagation();
       if ((button as HTMLButtonElement).disabled) return;
-      const itemId = (button as HTMLButtonElement).dataset.component || 'hoofdschakelaar';
-      const item = componentCatalog.find((entry) => entry.id === itemId) || componentCatalog[0];
+      const catalog = configuratorState.currentStep === 4 ? glandCatalog
+        : configuratorState.currentStep === 5 || configuratorState.currentStep === 6
+          ? sideComponentCatalog
+          : componentCatalog;
+      const itemId = (button as HTMLButtonElement).dataset.component || catalog[0].id;
+      const item = catalog.find((entry) => entry.id === itemId) || catalog[0];
       addComponentToScene(item);
       componentMenu.hidden = true;
       closeAllComponentGroups();
