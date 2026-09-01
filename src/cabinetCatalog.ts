@@ -6,18 +6,8 @@ export interface CabinetCatalogItem {
 
 export const cabinetCatalog: CabinetCatalogItem[] = [
   {
-    "id": "AX1003000",
-    "name": "AX1003000",
-    "modelFile": "Kasten/AX1003000/kast.gltf"
-  },
-  {
-    "id": "AX1012000",
-    "name": "AX1012000",
-    "modelFile": "Kasten/AX1012000/kast.gltf"
-  },
-  {
-    "id": "AX1018000",
-    "name": "AX1018000",
-    "modelFile": "Kasten/AX1018000/kast.gltf"
+    "id": "AX1009000",
+    "name": "AX1009000",
+    "modelFile": "Kasten/AX1009000/kast.gltf"
   }
 ];

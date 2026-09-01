@@ -197,7 +197,7 @@ function loadModelFile(filename: string) {
 }
 
 type ConfiguratorStep = 1 | 2 | 3 | 4 | 5 | 6;
-type ComponentView = 'front' | 'bottom' | 'left' | 'right';
+type ComponentView = 'front' | 'bottom' | 'left' | 'right' | 'mountingPlate';
 
 interface SelectedCabinet {
   id: string;
@@ -317,6 +317,19 @@ const sideComponentCatalog: ComponentCatalogItem[] = [
   },
 ];
 
+const mountingPlateComponentCatalog: ComponentCatalogItem[] = [
+  {
+    id: 'din-rail',
+    name: 'DIN-rail',
+    placement: { position: { x: 0.5, y: 0.35, z: 0 }, rotation: [0, 0, 0], scale: 0.25 },
+  },
+  {
+    id: 'kabelgoot',
+    name: 'Kabelgoot',
+    placement: { position: { x: 0.5, y: 0.65, z: 0 }, rotation: [0, 0, 0], scale: 0.25 },
+  },
+];
+
 const mountedComponents: MountedComponent[] = [];
 const mountedGlands: MountedComponent[] = [];
 const mountedLeftSideComponents: MountedComponent[] = [];
@@ -324,6 +337,8 @@ const mountedRightSideComponents: MountedComponent[] = [];
 let selectedComponent: MountedComponent | null = null;
 let componentLayout: HTMLDivElement | null = null;
 let componentView: ComponentView = 'front';
+let doorOpenDirection = 1;
+let doorAnimationFrame: number | null = null;
 const frontViewZoomState = {
   value: 1,
   min: 0.5,
@@ -409,9 +424,11 @@ function updateComponentMenuForStep() {
   componentMenu.querySelectorAll<HTMLElement>('.component-group').forEach((group) => {
     const isStep3 = configuratorState.currentStep === 3;
     const isStep4 = configuratorState.currentStep === 4;
-    const isSideView = configuratorState.currentStep === 5 || configuratorState.currentStep === 6;
+    const isSideView = configuratorState.currentStep === 5;
+    const isMountingPlateView = configuratorState.currentStep === 6;
     group.hidden = group.hasAttribute('data-step4-only') ? !isStep4
       : group.hasAttribute('data-side-view-only') ? !isSideView
+      : group.hasAttribute('data-mounting-plate-only') ? !isMountingPlateView
       : !isStep3;
   });
 }
@@ -457,7 +474,7 @@ function showStep(step: ConfiguratorStep) {
     else if (step === 6) step6ComponentHost.appendChild(componentLayout);
     else if (configStep3 && step3Footer) configStep3.insertBefore(componentLayout, step3Footer);
   }
-  componentView = step === 4 ? 'bottom' : step === 5 ? 'left' : step === 6 ? 'right' : 'front';
+  componentView = step === 4 ? 'bottom' : step === 5 ? 'left' : step === 6 ? 'mountingPlate' : 'front';
   if (componentMenu) componentMenu.hidden = true;
   updateComponentMenuForStep();
   selectedComponent = null;
@@ -478,11 +495,32 @@ function updateDoorPanelLayout() {
 
 function applyDoorOrientation(isLeftHinge: boolean) {
   if (!currentModel) return;
-  currentModel.scale.x = isLeftHinge ? -1 : 1;
-  currentModel.rotation.set(0, 0, 0);
-  currentModel.position.x = 0;
+  doorOpenDirection = isLeftHinge ? -1 : 1;
+  const pivot = currentModel.getObjectByName('DOOR_PIVOT');
+  if (pivot) pivot.rotation.y = 0;
   updateDoorPanelLayout();
   updateFrontPreview();
+}
+
+function animateDoorOpen() {
+  if (!currentModel) return;
+  const pivot = currentModel.getObjectByName('DOOR_PIVOT');
+  if (!pivot) return;
+  if (doorAnimationFrame) cancelAnimationFrame(doorAnimationFrame);
+
+  const start = performance.now();
+  const duration = 900;
+  const startAngle = pivot.rotation.y;
+  const targetAngle = THREE.MathUtils.degToRad(110) * doorOpenDirection;
+  const tick = (now: number) => {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    pivot.rotation.y = THREE.MathUtils.lerp(startAngle, targetAngle, eased);
+    updateFrontPreview();
+    if (progress < 1) doorAnimationFrame = requestAnimationFrame(tick);
+    else doorAnimationFrame = null;
+  };
+  doorAnimationFrame = requestAnimationFrame(tick);
 }
 
 function updateFrontPreview() {
@@ -505,12 +543,31 @@ function updateFrontPreview() {
 
   const cloned = currentModel.clone(true);
   cloned.rotation.set(0, 0, 0);
-  cloned.scale.set( configuratorState.selectedDoor?.id === 'doorLeft-btn' ? -1 : 1, 1, 1 );
   const visibleComponentIds = new Set(getMountedComponents().map((component) => component.id));
-  cloned.traverse((object) => {
-    const componentId = object.userData.mountedComponentId as string | undefined;
-    if (componentId) object.visible = visibleComponentIds.has(componentId);
-  });
+  if (componentView === 'mountingPlate') {
+    cloned.traverse((object) => { object.visible = false; });
+    const plate = cloned.getObjectByName('MOUNTING_PLATE');
+    if (plate) {
+      plate.traverse((object) => { object.visible = true; });
+      let parent: THREE.Object3D | null = plate.parent;
+      while (parent) {
+        parent.visible = true;
+        if (parent === cloned) break;
+        parent = parent.parent;
+      }
+    }
+    cloned.traverse((object) => {
+      const componentId = object.userData.mountedComponentId as string | undefined;
+      if (componentId && visibleComponentIds.has(componentId)) {
+        object.traverse((child) => { child.visible = true; });
+      }
+    });
+  } else {
+    cloned.traverse((object) => {
+      const componentId = object.userData.mountedComponentId as string | undefined;
+      if (componentId) object.visible = visibleComponentIds.has(componentId);
+    });
+  }
 
   const box = new THREE.Box3().setFromObject(cloned);
   const center = box.getCenter(new THREE.Vector3());
@@ -602,6 +659,20 @@ function convert2DTo3D(x: number, y: number, depthOffset = 0) {
 
   const box = new THREE.Box3().setFromObject(currentModel);
   const size = box.getSize(new THREE.Vector3());
+  if (componentView === 'mountingPlate') {
+    const plate = currentModel.getObjectByName('MOUNTING_PLATE');
+    if (plate) {
+      const plateBox = new THREE.Box3().setFromObject(plate);
+      const plateSize = plateBox.getSize(new THREE.Vector3());
+      const platePosition = new THREE.Vector3(
+        THREE.MathUtils.lerp(plateBox.min.x, plateBox.max.x, x),
+        THREE.MathUtils.lerp(plateBox.max.y, plateBox.min.y, y),
+        plateBox.max.z + plateSize.z * (0.5 + depthOffset)
+      );
+      currentModel.updateMatrixWorld(true);
+      return currentModel.worldToLocal(platePosition);
+    }
+  }
   const targetX = THREE.MathUtils.lerp(-size.x * 0.28, size.x * 0.28, x);
   const targetY = THREE.MathUtils.lerp(size.y * 0.28, -size.y * 0.28, y);
   const targetWorldPosition = componentView === 'bottom'
@@ -843,7 +914,7 @@ const step6NextBtn = document.getElementById('step6-next-btn') as HTMLButtonElem
 if (step5BackBtn) step5BackBtn.addEventListener('click', () => showStep(4));
 if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
 if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
-if (step6NextBtn) step6NextBtn.addEventListener('click', () => console.log('Stap 6 bevestigd'));
+if (step6NextBtn) step6NextBtn.addEventListener('click', animateDoorOpen);
 
 if (frontView2d) {
   applyFrontViewZoom(1);
@@ -933,9 +1004,11 @@ if (addComponentBtn && componentMenu) {
       event.stopPropagation();
       if ((button as HTMLButtonElement).disabled) return;
       const catalog = configuratorState.currentStep === 4 ? glandCatalog
-        : configuratorState.currentStep === 5 || configuratorState.currentStep === 6
+        : configuratorState.currentStep === 5
           ? sideComponentCatalog
-          : componentCatalog;
+          : configuratorState.currentStep === 6
+            ? mountingPlateComponentCatalog
+            : componentCatalog;
       const itemId = (button as HTMLButtonElement).dataset.component || catalog[0].id;
       const item = catalog.find((entry) => entry.id === itemId) || catalog[0];
       addComponentToScene(item);
