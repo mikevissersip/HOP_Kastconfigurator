@@ -73,164 +73,84 @@
 
             <section
               id="config-step-2"
-              class="config-step config-step--door"
+                class="config-step config-step--choice"
               data-step="2"
               hidden
             >
-              <h2 class="panel-title">Kies gewenste deurpositie</h2>
-              
-              <div class="model-btn-container">
-                <button id="doorLeft-btn" class="model-btn-door" data-door="door1.gltf" role="listitem">Deur links</button>
-                <button id="doorRight-btn" class="model-btn-door active" data-door="door2.gltf" role="listitem">Deur rechts</button>
-              </div>
-              
+                <h2 class="panel-title">Kies de binnenkomende spanning van de kast</h2>
+                <div class="choice-list voltage-choice-list" role="radiogroup" aria-label="Binnenkomende spanning">
+                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="230 VAC"> <img src="/images/230VAC.png" alt=""><span>230 VAC</span></label>
+                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="400 VAC"> <img src="/images/400VAC.png" alt=""><span>400 VAC</span></label>
+                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="24 VDC"> <img src="/images/24V.png" alt=""><span>24 VDC</span></label>
+                </div>
               <div class="panel-footer">
                 <button id="back-btn" class="back-btn">Vorige</button>
-
-                <div id="selected-door-name" class="selected-name">Rechts</div>
-                
                 <button id="step2-next-btn" class="next-btn">Volgende</button>
               </div>
            </section>
 
            <section
              id="config-step-3"
-             class="config-step config-step--components"
+             class="config-step config-step--choice"
              data-step="3"
              hidden
            >
-             <h2 class="panel-title">Plaats componenten op de voordeur</h2>
-
-             <div class="component-layout">
-               <div id="front-view-2d" class="front-view-2d" aria-label="Voorbeeld van de voorkant van de kast">
-                 <div class="front-view-toolbar" aria-label="Zoom en component toevoegen">
-                   <div class="zoom-controls" aria-label="Zoominstellingen">
-                     <button type="button" class="zoom-btn zoom-in" data-zoom-action="in" aria-label="Inzoomen"><span aria-hidden="true">+</span></button>
-                     <button type="button" class="zoom-btn zoom-out" data-zoom-action="out" aria-label="Uitzoomen"><span aria-hidden="true">−</span></button>
-                   </div>
-                   <button id="add-component-btn" class="add-component-btn" aria-label="Component toevoegen"><span aria-hidden="true">+</span></button>
-                   <button id="delete-component-btn" class="delete-component-btn" aria-label="Component verwijderen" disabled><img src="/images/trashcan.ico" alt="" aria-hidden="true"></button>
-                 </div>
-                 <div class="cabinet-face">
-                   <div id="door-panel" class="door-panel"></div>
-                   <div id="component-layer" class="component-layer"></div>
-                 </div>
-                 <div id="component-menu" class="component-menu" hidden>                   <div class="component-group">
-                     <button type="button" class="component-group-btn" data-group="hoofdschakelaars">
-                       <span>Hoofdschakelaars</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="hoofdschakelaar">EATON 057856 T0-1-8200/V/SVB</button>
-                     </div>
-                   </div>
-                   <div class="component-group">
-                     <button type="button" class="component-group-btn" data-group="zekeringen">
-                       <span>Zekeringen</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="zekering" disabled>Zekering (binnenkort)</button>
-                     </div>
-                   </div>
-                   <div class="component-group">
-                     <button type="button" class="component-group-btn" data-group="drukschakelaars">
-                       <span>Drukschakelaars</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="drukschakelaar" disabled>Drukschakelaar (binnenkort)</button>
-                     </div>
-                   </div>
-                   <div class="component-group">
-                     <button type="button" class="component-group-btn" data-group="signaalverlichting">
-                       <span>Signaalverlichting</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="signaallampje">Schneider Electric - pilot light - green</button>
-                     </div>
-                   </div>
-                   <div class="component-group" data-step4-only>
-                     <button type="button" class="component-group-btn" data-group="wartels">
-                       <span>Wartels</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="wartel">Wartel (model toevoegen)</button>
-                     </div>
-                   </div>
-                   <div class="component-group" data-side-view-only>
-                     <button type="button" class="component-group-btn" data-group="verwarming">
-                       <span>Verwarming</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="verwarming">Verwarmingsmodel (model toevoegen)</button>
-                     </div>
-                   </div>
-                   <div class="component-group" data-side-view-only>
-                     <button type="button" class="component-group-btn" data-group="ventilatie">
-                       <span>Ventilatie</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="ventilatie">Ventilatiemodel (model toevoegen)</button>
-                     </div>
-                   </div>
-                   <div class="component-group" data-mounting-plate-only>
-                     <button type="button" class="component-group-btn" data-group="montageplaat">
-                       <span>Montageplaat</span>
-                       <span class="chevron" aria-hidden="true">▸</span>
-                     </button>
-                     <div class="component-submenu" hidden>
-                       <button type="button" class="component-option" data-component="din-rail">DIN-rail</button>
-                       <button type="button" class="component-option" data-component="kabelgoot">Kabelgoot</button>
-                     </div>
-                   </div>
-                 </div>
-               </div>
+             <h2 class="panel-title">Kies het merk van de installatieautomaat</h2>
+             <div class="choice-list" role="radiogroup" aria-label="Merk installatieautomaat">
+               <label class="choice-option"><input type="radio" name="breakerBrand" value="Eaton"> <span>Eaton</span></label>
+               <label class="choice-option"><input type="radio" name="breakerBrand" value="Siemens"> <span>Siemens</span></label>
+               <label class="choice-option"><input type="radio" name="breakerBrand" value="ABB"> <span>ABB</span></label>
              </div>
-
              <div class="panel-footer">
               <button id="step3-back-btn" class="back-btn">Vorige</button>
-              <div id="selected-component-name" class="selected-name">Geen onderdeel</div>
               <button id="step3-next-btn" class="next-btn">Volgende</button>
              </div>
            </section>
 
            <section
              id="config-step-4"
-             class="config-step config-step--components"
+             class="config-step config-step--choice"
              data-step="4"
              hidden
            >
-             <h2 class="panel-title">Plaats wartels aan de onderzijde van de kast</h2>
-             <div id="step4-component-host" class="component-layout-host"></div>
+             <h2 class="panel-title">Kies de voeding</h2>
+             <div class="choice-list" role="radiogroup" aria-label="Voeding">
+               <label class="choice-option"><input type="radio" name="powerSupply" value="Weidmuller"> <span>Weidmuller</span></label>
+               <label class="choice-option"><input type="radio" name="powerSupply" value="Phoenix"> <span>Phoenix</span></label>
+             </div>
              <div class="panel-footer">
               <button id="step4-back-btn" class="back-btn">Vorige</button>
-              <div id="selected-gland-name" class="selected-name">Geen wartel</div>
               <button id="step4-next-btn" class="next-btn">Volgende</button>
              </div>
            </section>
 
-           <section id="config-step-5" class="config-step config-step--components" data-step="5" hidden>
-             <h2 class="panel-title">Plaats componenten op het linkerzijaanzicht</h2>
-             <div id="step5-component-host" class="component-layout-host"></div>
+           <section id="config-step-5" class="config-step config-step--choice" data-step="5" hidden>
+             <h2 class="panel-title">Kies de voorzieningen in de kast</h2>
+             <div class="choice-list feature-list">
+               <label class="choice-row"><span>Verlichting</span><select name="lighting"><option value="Nee">Nee</option><option value="Ja">Ja</option></select></label>
+               <label class="choice-row"><span>Verwarming</span><select name="heating"><option value="Nee">Nee</option><option value="Ja">Ja</option></select></label>
+               <label class="choice-row"><span>Ventilatie</span><select name="ventilation"><option value="Nee">Nee</option><option value="Ja">Ja</option></select></label>
+             </div>
              <div class="panel-footer">
               <button id="step5-back-btn" class="back-btn">Vorige</button>
-              <div id="selected-side-left-name" class="selected-name">Geen onderdeel</div>
               <button id="step5-next-btn" class="next-btn">Volgende</button>
              </div>
            </section>
 
-           <section id="config-step-6" class="config-step config-step--components" data-step="6" hidden>
-             <h2 class="panel-title">Plaats componenten op de montageplaat</h2>
-             <div id="step6-component-host" class="component-layout-host"></div>
+           <section id="config-step-6" class="config-step config-step--choice" data-step="6" hidden>
+             <h2 class="panel-title">Kies het aantal IO-kaarten</h2>
+             <div class="io-list">
+               <label class="io-row"><span>DI-kaarten</span><input type="number" name="di" min="0" value="0"></label>
+               <label class="io-row"><span>DO-kaarten</span><input type="number" name="do" min="0" value="0"></label>
+               <label class="io-row"><span>AI-kaarten</span><input type="number" name="ai" min="0" value="0"></label>
+               <label class="io-row"><span>AO-kaarten</span><input type="number" name="ao" min="0" value="0"></label>
+               <label class="io-row"><span>Safe DI-kaarten</span><input type="number" name="safeDi" min="0" value="0"></label>
+               <label class="io-row"><span>Safe DO-kaarten</span><input type="number" name="safeDo" min="0" value="0"></label>
+               <label class="io-row"><span>Safe AI-kaarten</span><input type="number" name="safeAi" min="0" value="0"></label>
+             </div>
              <div class="panel-footer">
               <button id="step6-back-btn" class="back-btn">Vorige</button>
-              <div id="selected-side-right-name" class="selected-name">Geen onderdeel</div>
-              <button id="step6-next-btn" class="next-btn">Volgende</button>
+              <button id="step6-next-btn" class="next-btn">Afronden</button>
              </div>
            </section>
           </aside>

@@ -180,6 +180,8 @@ function loadModelFile(filename: string) {
       controls.target.set(0, 0, 0);
       controls.update();
 
+      if (configuratorState.currentStep === 2) animateDoorOpen();
+
       // hide status
       if (status && status.parentElement) status.remove();
     },
@@ -243,12 +245,26 @@ interface ConfiguratorState {
   currentStep: ConfiguratorStep;
   selectedCabinet: SelectedCabinet | null;
   selectedDoor: SelectedDoor | null;
+  voltage: '230 VAC' | '400 VAC' | '24 VDC' | null;
+  breakerBrand: 'Eaton' | 'Siemens' | 'ABB' | null;
+  powerSupply: 'Weidmuller' | 'Phoenix' | null;
+  features: {
+    lighting: 'Ja' | 'Nee';
+    heating: 'Ja' | 'Nee';
+    ventilation: 'Ja' | 'Nee';
+  };
+  ioCards: Record<string, number>;
 }
 
 const configuratorState: ConfiguratorState = {
   currentStep: 1,
   selectedCabinet: null,
   selectedDoor: null,
+  voltage: null,
+  breakerBrand: null,
+  powerSupply: null,
+  features: { lighting: 'Nee', heating: 'Nee', ventilation: 'Nee' },
+  ioCards: { di: 0, do: 0, ai: 0, ao: 0, safeDi: 0, safeDo: 0, safeAi: 0 },
 };
 
 const componentCatalog: ComponentCatalogItem[] = [
@@ -461,6 +477,10 @@ function setActiveDoorButton(btn: Element | null) {
 }
 
 function showStep(step: ConfiguratorStep) {
+  if (step === 4 && configuratorState.voltage === '24 VDC') {
+    showStep(5);
+    return;
+  }
   configuratorState.currentStep = step;
   if (configStep1) configStep1.hidden = step !== 1;
   if (configStep2) configStep2.hidden = step !== 2;
@@ -482,6 +502,7 @@ function showStep(step: ConfiguratorStep) {
   const selectedName = getSelectedNameEl();
   if (selectedName) selectedName.textContent = step === 4 ? 'Geen wartel' : 'Geen onderdeel';
   renderActiveComponents();
+  if (step === 2) animateDoorOpen();
 }
 
 function updateDoorPanelLayout() {
@@ -878,6 +899,37 @@ if (step1NextBtn) {
   });
 }
 
+document.querySelectorAll<HTMLInputElement>('input[name="voltage"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    configuratorState.voltage = input.value as ConfiguratorState['voltage'];
+  });
+});
+
+document.querySelectorAll<HTMLInputElement>('input[name="breakerBrand"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    configuratorState.breakerBrand = input.value as ConfiguratorState['breakerBrand'];
+  });
+});
+
+document.querySelectorAll<HTMLInputElement>('input[name="powerSupply"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    configuratorState.powerSupply = input.value as ConfiguratorState['powerSupply'];
+  });
+});
+
+document.querySelectorAll<HTMLSelectElement>('select[name]').forEach((select) => {
+  select.addEventListener('change', () => {
+    const feature = select.name as keyof ConfiguratorState['features'];
+    configuratorState.features[feature] = select.value as 'Ja' | 'Nee';
+  });
+});
+
+document.querySelectorAll<HTMLInputElement>('.io-row input[type="number"]').forEach((input) => {
+  input.addEventListener('input', () => {
+    configuratorState.ioCards[input.name] = Math.max(0, Number.parseInt(input.value, 10) || 0);
+  });
+});
+
 if (backBtn) {
   backBtn.addEventListener('click', () => {
     showStep(1);
@@ -886,7 +938,7 @@ if (backBtn) {
 
 if (step2NextBtn) {
   step2NextBtn.addEventListener('click', () => {
-    showStep(3);
+    if (configuratorState.voltage) showStep(3);
   });
 }
 
@@ -898,23 +950,27 @@ if (step3BackBtn) {
 
 if (step3NextBtn) {
   step3NextBtn.addEventListener('click', () => {
-    showStep(4);
+    if (!configuratorState.breakerBrand) return;
+    showStep(configuratorState.voltage === '24 VDC' ? 5 : 4);
   });
 }
 
 const step4BackBtn = document.getElementById('step4-back-btn') as HTMLButtonElement | null;
 const step4NextBtn = document.getElementById('step4-next-btn') as HTMLButtonElement | null;
 if (step4BackBtn) step4BackBtn.addEventListener('click', () => showStep(3));
-if (step4NextBtn) step4NextBtn.addEventListener('click', () => showStep(5));
+if (step4NextBtn) step4NextBtn.addEventListener('click', () => {
+  if (configuratorState.powerSupply) showStep(5);
+});
 
 const step5BackBtn = document.getElementById('step5-back-btn') as HTMLButtonElement | null;
 const step5NextBtn = document.getElementById('step5-next-btn') as HTMLButtonElement | null;
 const step6BackBtn = document.getElementById('step6-back-btn') as HTMLButtonElement | null;
 const step6NextBtn = document.getElementById('step6-next-btn') as HTMLButtonElement | null;
-if (step5BackBtn) step5BackBtn.addEventListener('click', () => showStep(4));
+if (step5BackBtn) step5BackBtn.addEventListener('click', () => {
+  showStep(configuratorState.voltage === '24 VDC' ? 3 : 4);
+});
 if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
 if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
-if (step6NextBtn) step6NextBtn.addEventListener('click', animateDoorOpen);
 
 if (frontView2d) {
   applyFrontViewZoom(1);
