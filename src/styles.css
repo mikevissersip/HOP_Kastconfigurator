@@ -269,8 +269,15 @@ a {
   flex-direction: column;
   gap: 10px;
   flex: 1;
+  min-height: 0;
   justify-content: center;
   padding: 12px 0;
+}
+
+.io-list {
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .choice-option,
@@ -338,6 +345,46 @@ a {
 }
 
 .voltage-choice:focus-within {
+  outline: 2px solid rgba(2, 103, 204, 0.45);
+  outline-offset: 2px;
+}
+
+.brand-choice-list {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.brand-choice {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 190px;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.brand-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brand-choice img {
+  width: min(100%, 180px);
+  height: 100px;
+  object-fit: contain;
+}
+
+.brand-choice:has(input:checked) {
+  border-color: var(--HOP-orange);
+  background: #fff5f1;
+  box-shadow: inset 0 0 0 2px var(--HOP-orange);
+}
+
+.brand-choice:focus-within {
   outline: 2px solid rgba(2, 103, 204, 0.45);
   outline-offset: 2px;
 }
@@ -892,6 +939,16 @@ a {
 
   .voltage-choice img {
     height: 78px;
+  }
+
+  #config-step-6 {
+    overflow: hidden;
+  }
+
+  #config-step-6 .io-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    justify-content: flex-start;
   }
 
   .component-menu {
