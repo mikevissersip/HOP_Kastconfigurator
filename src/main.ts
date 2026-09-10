@@ -71,6 +71,14 @@ controls.maxDistance = 10;
 controls.autoRotate = true;
 controls.autoRotateSpeed = 1.5;
 
+const autoRotateToggle = document.getElementById('auto-rotate-toggle') as HTMLInputElement | null;
+if (autoRotateToggle) {
+  autoRotateToggle.checked = controls.autoRotate;
+  autoRotateToggle.addEventListener('change', () => {
+    controls.autoRotate = autoRotateToggle.checked;
+  });
+}
+
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
 
 const frontLight = new THREE.DirectionalLight(0xffffff, 1.3);
@@ -87,7 +95,150 @@ scene.add(sideLight);
 
 const loader = new GLTFLoader();
 let currentModel: THREE.Object3D | null = null;
+let currentMontageModel: THREE.Object3D | null = null;
 let currentTimeout: number | null = null;
+
+const montageMeshNames = [
+  'EMC_RAIL_LEFT',
+  'EMC_RAIL_MIDDLE',
+  'EMC_RAIL_RIGHT',
+  'WE_RAIL_LEFT',
+  'WE_RAIL_MIDDLE',
+  'WE_RAIL_RIGHT',
+  'SHIELDING_DUCT',
+];
+
+function hasAnalogCards() {
+  return configuratorState.ioCards.ai > 0
+    || configuratorState.ioCards.ao > 0
+    || configuratorState.ioCards.safeAi > 0;
+}
+
+function updateMontageMeshVisibility() {
+  if (!currentMontageModel) return;
+  const visible = hasAnalogCards();
+  montageMeshNames.forEach((meshName) => {
+    const mesh = currentMontageModel!.getObjectByName(meshName);
+    if (mesh) mesh.visible = visible;
+  });
+  updateFrontPreview();
+}
+
+type MountingAxis = 'X' | 'Y' | 'Z' | '-X' | '-Y' | '-Z';
+
+interface MountingAxes {
+  normalAxis: MountingAxis;
+  horizontalAxis: MountingAxis;
+  verticalAxis: MountingAxis;
+}
+
+const defaultMountingAxes: MountingAxes = {
+  normalAxis: 'Y',
+  horizontalAxis: 'X',
+  verticalAxis: 'Z',
+};
+
+function getMountingAxes(object: THREE.Object3D): MountingAxes {
+  const axes = object.userData as Partial<MountingAxes>;
+  return {
+    normalAxis: axes.normalAxis || defaultMountingAxes.normalAxis,
+    horizontalAxis: axes.horizontalAxis || defaultMountingAxes.horizontalAxis,
+    verticalAxis: axes.verticalAxis || defaultMountingAxes.verticalAxis,
+  };
+}
+
+function getAxisVector(axis: MountingAxis) {
+  const direction = axis.startsWith('-') ? -1 : 1;
+  const axisName = axis.replace('-', '').toLowerCase() as 'x' | 'y' | 'z';
+  const vector = new THREE.Vector3();
+  vector[axisName] = direction;
+  return vector;
+}
+
+function getMountingFrame(object: THREE.Object3D) {
+  const axes = getMountingAxes(object);
+  const origin = new THREE.Vector3();
+  const horizontal = getAxisVector(axes.horizontalAxis);
+  const normal = getAxisVector(axes.normalAxis);
+  const vertical = getAxisVector(axes.verticalAxis);
+
+  object.getWorldPosition(origin);
+  object.localToWorld(horizontal).sub(origin).normalize();
+  object.localToWorld(normal).sub(origin).normalize();
+  object.localToWorld(vertical).sub(origin).normalize();
+
+  return {
+    origin,
+    horizontal,
+    normal,
+    vertical,
+  };
+}
+
+function alignMontageToCabinet(cabinetModel: THREE.Object3D, montageModel: THREE.Object3D) {
+  const mountingSurface = cabinetModel.getObjectByName('SURFACE_MOUNTING_PLATE');
+  const mountingPoint = montageModel.getObjectByName('MOUNTING_POINT');
+  if (!mountingSurface || !mountingPoint) {
+    console.warn('Could not align montage plate: missing SURFACE_MOUNTING_PLATE or MOUNTING_POINT');
+    return;
+  }
+
+  cabinetModel.updateMatrixWorld(true);
+  montageModel.updateMatrixWorld(true);
+
+  const targetFrame = getMountingFrame(mountingSurface);
+  const pointFrame = getMountingFrame(mountingPoint);
+  const currentWorldQuaternion = new THREE.Quaternion();
+  const parentWorldQuaternion = new THREE.Quaternion();
+  montageModel.getWorldQuaternion(currentWorldQuaternion);
+  montageModel.parent?.getWorldQuaternion(parentWorldQuaternion);
+
+  const normalRotation = new THREE.Quaternion().setFromUnitVectors(
+    pointFrame.normal,
+    targetFrame.normal
+  );
+  const rotatedHorizontal = pointFrame.horizontal.clone().applyQuaternion(normalRotation);
+  const horizontalRotation = new THREE.Quaternion().setFromUnitVectors(
+    rotatedHorizontal,
+    targetFrame.horizontal
+  );
+  const alignmentRotation = horizontalRotation.multiply(normalRotation);
+  const desiredWorldQuaternion = alignmentRotation.multiply(currentWorldQuaternion);
+  montageModel.quaternion.copy(parentWorldQuaternion.invert().multiply(desiredWorldQuaternion));
+  montageModel.updateMatrixWorld(true);
+
+  const alignedPointPosition = new THREE.Vector3();
+  mountingPoint.getWorldPosition(alignedPointPosition);
+  const parent = montageModel.parent;
+  if (parent) {
+    const targetLocalPosition = parent.worldToLocal(targetFrame.origin.clone());
+    const pointLocalPosition = parent.worldToLocal(alignedPointPosition.clone());
+    montageModel.position.add(targetLocalPosition.sub(pointLocalPosition));
+  } else {
+    montageModel.position.add(targetFrame.origin.sub(alignedPointPosition));
+  }
+}
+
+function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
+  const montageFile = cabinetFile.replace(/(^|\/)kast\.gltf$/i, '$1montageplaat.gltf');
+  if (montageFile === cabinetFile) return;
+
+  loader.load(
+    `${import.meta.env.BASE_URL}${montageFile}`,
+    (gltf) => {
+      if (currentModel !== cabinetModel) return;
+
+      const montageModel = gltf.scene;
+      montageModel.name = 'MONTAGEPLATE_MODEL';
+      cabinetModel.add(montageModel);
+      alignMontageToCabinet(cabinetModel, montageModel);
+      currentMontageModel = montageModel;
+      updateMontageMeshVisibility();
+    },
+    undefined,
+    (err) => console.error(`Failed to load montage model ${montageFile}:`, err)
+  );
+}
 
 function disposeModel(obj: THREE.Object3D) {
   obj.traverse((o) => {
@@ -141,6 +292,7 @@ function loadModelFile(filename: string) {
         disposeModel(currentModel);
         currentModel = null;
       }
+      currentMontageModel = null;
 
       const model = gltf.scene;
 
@@ -166,6 +318,7 @@ function loadModelFile(filename: string) {
 
       scene.add(model);
       currentModel = model;
+      loadMontageFile(model, filename);
       updateFrontPreview();
 
       // center model and position camera
@@ -577,6 +730,10 @@ function updateFrontPreview() {
         parent = parent.parent;
       }
     }
+    const montageModel = cloned.getObjectByName('MONTAGEPLATE_MODEL');
+    if (montageModel) {
+      montageModel.traverse((object) => { object.visible = true; });
+    }
     cloned.traverse((object) => {
       const componentId = object.userData.mountedComponentId as string | undefined;
       if (componentId && visibleComponentIds.has(componentId)) {
@@ -857,12 +1014,14 @@ function createCabinetButtons() {
       loadModelFile(cabinet.modelFile);
       configuratorState.selectedCabinet = cabinet;
       setActiveButton(button);
+      updateNextButtonStates();
     });
     cabinetList.appendChild(button);
 
     if (index === 0) {
       button.classList.add('active');
       configuratorState.selectedCabinet = cabinet;
+      updateNextButtonStates();
     }
   });
 }
@@ -895,25 +1054,28 @@ if (rightDoor) {
 
 if (step1NextBtn) {
   step1NextBtn.addEventListener('click', () => {
-    showStep(2);
+    if (requireSelection(configuratorState.selectedCabinet)) showStep(2);
   });
 }
 
 document.querySelectorAll<HTMLInputElement>('input[name="voltage"]').forEach((input) => {
   input.addEventListener('change', () => {
     configuratorState.voltage = input.value as ConfiguratorState['voltage'];
+    updateNextButtonStates();
   });
 });
 
 document.querySelectorAll<HTMLInputElement>('input[name="breakerBrand"]').forEach((input) => {
   input.addEventListener('change', () => {
     configuratorState.breakerBrand = input.value as ConfiguratorState['breakerBrand'];
+    updateNextButtonStates();
   });
 });
 
 document.querySelectorAll<HTMLInputElement>('input[name="powerSupply"]').forEach((input) => {
   input.addEventListener('change', () => {
     configuratorState.powerSupply = input.value as ConfiguratorState['powerSupply'];
+    updateNextButtonStates();
   });
 });
 
@@ -927,6 +1089,7 @@ document.querySelectorAll<HTMLSelectElement>('select[name]').forEach((select) =>
 document.querySelectorAll<HTMLInputElement>('.io-row input[type="number"]').forEach((input) => {
   input.addEventListener('input', () => {
     configuratorState.ioCards[input.name] = Math.max(0, Number.parseInt(input.value, 10) || 0);
+    updateMontageMeshVisibility();
   });
 });
 
@@ -938,7 +1101,7 @@ if (backBtn) {
 
 if (step2NextBtn) {
   step2NextBtn.addEventListener('click', () => {
-    if (configuratorState.voltage) showStep(3);
+    if (requireSelection(configuratorState.voltage)) showStep(3);
   });
 }
 
@@ -950,8 +1113,9 @@ if (step3BackBtn) {
 
 if (step3NextBtn) {
   step3NextBtn.addEventListener('click', () => {
-    if (!configuratorState.breakerBrand) return;
-    showStep(configuratorState.voltage === '24 VDC' ? 5 : 4);
+    if (requireSelection(configuratorState.breakerBrand)) {
+      showStep(configuratorState.voltage === '24 VDC' ? 5 : 4);
+    }
   });
 }
 
@@ -959,18 +1123,41 @@ const step4BackBtn = document.getElementById('step4-back-btn') as HTMLButtonElem
 const step4NextBtn = document.getElementById('step4-next-btn') as HTMLButtonElement | null;
 if (step4BackBtn) step4BackBtn.addEventListener('click', () => showStep(3));
 if (step4NextBtn) step4NextBtn.addEventListener('click', () => {
-  if (configuratorState.powerSupply) showStep(5);
+  if (requireSelection(configuratorState.powerSupply)) showStep(5);
 });
 
 const step5BackBtn = document.getElementById('step5-back-btn') as HTMLButtonElement | null;
 const step5NextBtn = document.getElementById('step5-next-btn') as HTMLButtonElement | null;
 const step6BackBtn = document.getElementById('step6-back-btn') as HTMLButtonElement | null;
 const step6NextBtn = document.getElementById('step6-next-btn') as HTMLButtonElement | null;
+
+function setNextButtonState(button: HTMLButtonElement | null, enabled: boolean) {
+  if (!button) return;
+  button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+}
+
+function updateNextButtonStates() {
+  setNextButtonState(step1NextBtn, Boolean(configuratorState.selectedCabinet));
+  setNextButtonState(step2NextBtn, Boolean(configuratorState.voltage));
+  setNextButtonState(step3NextBtn, Boolean(configuratorState.breakerBrand));
+  setNextButtonState(step4NextBtn, Boolean(configuratorState.powerSupply));
+  setNextButtonState(step5NextBtn, true);
+  setNextButtonState(step6NextBtn, true);
+}
+
+function requireSelection(selected: unknown) {
+  if (selected) return true;
+  window.alert('Maak eerst een keuze voordat je verdergaat.');
+  return false;
+}
+
 if (step5BackBtn) step5BackBtn.addEventListener('click', () => {
   showStep(configuratorState.voltage === '24 VDC' ? 3 : 4);
 });
 if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
 if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
+
+updateNextButtonStates();
 
 if (frontView2d) {
   applyFrontViewZoom(1);

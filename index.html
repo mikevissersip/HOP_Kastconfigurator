@@ -114,9 +114,9 @@
              hidden
            >
              <h2 class="panel-title">Kies de voeding</h2>
-             <div class="choice-list" role="radiogroup" aria-label="Voeding">
-               <label class="choice-option"><input type="radio" name="powerSupply" value="Weidmuller"> <span>Weidmuller</span></label>
-               <label class="choice-option"><input type="radio" name="powerSupply" value="Phoenix"> <span>Phoenix</span></label>
+             <div class="choice-list brand-choice-list" role="radiogroup" aria-label="Voeding">
+               <label class="choice-option brand-choice"><input type="radio" name="powerSupply" value="Weidmuller"> <img src="/images/Weidmuller_Logo.png" alt="Weidmuller"><span>Weidmuller voeding</span></label>
+               <label class="choice-option brand-choice"><input type="radio" name="powerSupply" value="Phoenix"> <img src="/images/Phoenix_Logo.png" alt="Phoenix"><span>Phoenix voeding</span></label>
              </div>
              <div class="panel-footer">
               <button id="step4-back-btn" class="back-btn">Vorige</button>
@@ -159,7 +159,11 @@
               id="viewer-stage"
               class="viewer-stage"
               aria-label="3D cabinet preview">
-              
+              <label class="rotation-toggle" for="auto-rotate-toggle">
+                <span>Automatisch draaien</span>
+                <input id="auto-rotate-toggle" type="checkbox" checked />
+                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+              </label>
           </div>
         </div>
 

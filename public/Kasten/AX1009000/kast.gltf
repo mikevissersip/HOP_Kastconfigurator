@@ -87,8 +87,8 @@
 			"extras":{
 				"width":0.6000000238418579,
 				"height":0.3799999952316284,
-				"normalAxis":"Y",
 				"horizontalAxis":"X",
+				"normalAxis":"Y",
 				"verticalAxis":"Z",
 				"configuratorType":"placementSurface",
 				"surfaceId":"doorOutside"
@@ -137,9 +137,9 @@
 		},
 		{
 			"extras":{
-				"normalAxis":"Y",
+				"normalAxis":"Z",
 				"horizontalAxis":"X",
-				"verticalAxis":"Z",
+				"verticalAxis":"Y",
 				"configuratorType":"placementSurface",
 				"surfaceId":"mountingPlate",
 				"height":0.3499999940395355,
