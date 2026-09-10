@@ -64,18 +64,72 @@ renderer.toneMappingExposure = 1.1;
 stage.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+controls.enableDamping = false;
 controls.enablePan = false;
 controls.minDistance = 0.45;
 controls.maxDistance = 10;
 controls.autoRotate = true;
 controls.autoRotateSpeed = 1.5;
 
+const maxPanOffset = 0.6;
+let autoRotateEnabled = controls.autoRotate;
+let isMiddleMousePanning = false;
+let lastPanPointer = { x: 0, y: 0 };
+
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  if (event.button !== 1) return;
+  event.preventDefault();
+  isMiddleMousePanning = true;
+  lastPanPointer = { x: event.clientX, y: event.clientY };
+  renderer.domElement.setPointerCapture(event.pointerId);
+  controls.enabled = false;
+  controls.autoRotate = false;
+});
+
+renderer.domElement.addEventListener('pointermove', (event) => {
+  if (!isMiddleMousePanning) return;
+
+  const deltaX = event.clientX - lastPanPointer.x;
+  const deltaY = event.clientY - lastPanPointer.y;
+  lastPanPointer = { x: event.clientX, y: event.clientY };
+
+  const offset = camera.position.clone().sub(controls.target);
+  const targetDistance = offset.length() * Math.tan((camera.fov / 2) * Math.PI / 180);
+  const panScale = (2 * targetDistance) / renderer.domElement.clientHeight;
+  const panDelta = new THREE.Vector3()
+    .setFromMatrixColumn(camera.matrix, 0)
+    .multiplyScalar(-deltaX * panScale)
+    .add(new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1).multiplyScalar(deltaY * panScale));
+
+  const proposedTarget = controls.target.clone().add(panDelta);
+  if (proposedTarget.length() > maxPanOffset) {
+    proposedTarget.setLength(maxPanOffset);
+    panDelta.copy(proposedTarget).sub(controls.target);
+  }
+
+  controls.target.add(panDelta);
+  camera.position.add(panDelta);
+});
+
+const stopMiddleMousePanning = (event: PointerEvent) => {
+  if (!isMiddleMousePanning) return;
+  isMiddleMousePanning = false;
+  if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+    renderer.domElement.releasePointerCapture(event.pointerId);
+  }
+  controls.enabled = true;
+  controls.autoRotate = autoRotateEnabled;
+};
+
+renderer.domElement.addEventListener('pointerup', stopMiddleMousePanning);
+renderer.domElement.addEventListener('pointercancel', stopMiddleMousePanning);
+
 const autoRotateToggle = document.getElementById('auto-rotate-toggle') as HTMLInputElement | null;
 if (autoRotateToggle) {
   autoRotateToggle.checked = controls.autoRotate;
   autoRotateToggle.addEventListener('change', () => {
-    controls.autoRotate = autoRotateToggle.checked;
+    autoRotateEnabled = autoRotateToggle.checked;
+    if (!isMiddleMousePanning) controls.autoRotate = autoRotateEnabled;
   });
 }
 
@@ -1217,7 +1271,9 @@ if (backBtn) {
 
 if (step2NextBtn) {
   step2NextBtn.addEventListener('click', () => {
-    if (requireSelection(configuratorState.voltage)) showStep(3);
+    if (requireSelection(configuratorState.voltage)) {
+      showStep(configuratorState.voltage === '24 VDC' ? 5 : 3);
+    }
   });
 }
 
@@ -1268,7 +1324,7 @@ function requireSelection(selected: unknown) {
 }
 
 if (step5BackBtn) step5BackBtn.addEventListener('click', () => {
-  showStep(configuratorState.voltage === '24 VDC' ? 3 : 4);
+  showStep(configuratorState.voltage === '24 VDC' ? 2 : 4);
 });
 if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
 if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
