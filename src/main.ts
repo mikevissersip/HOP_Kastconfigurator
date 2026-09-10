@@ -223,21 +223,33 @@ function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
   const montageFile = cabinetFile.replace(/(^|\/)kast\.gltf$/i, '$1MontagePlaat.gltf');
   if (montageFile === cabinetFile) return;
 
-  loader.load(
-    `${import.meta.env.BASE_URL}${montageFile}`,
-    (gltf) => {
-      if (currentModel !== cabinetModel) return;
+  const candidates = [montageFile, montageFile.replace('MontagePlaat.gltf', 'montageplaat.gltf')];
+  const tryLoad = (candidateIndex: number) => {
+    const candidate = candidates[candidateIndex];
+    loader.load(
+      `${import.meta.env.BASE_URL}${candidate}`,
+      (gltf) => {
+        if (currentModel !== cabinetModel) return;
 
-      const montageModel = gltf.scene;
-      montageModel.name = 'MONTAGEPLATE_MODEL';
-      cabinetModel.add(montageModel);
-      alignMontageToCabinet(cabinetModel, montageModel);
-      currentMontageModel = montageModel;
-      updateMontageMeshVisibility();
-    },
-    undefined,
-    (err) => console.error(`Failed to load montage model ${montageFile}:`, err)
-  );
+        const montageModel = gltf.scene;
+        montageModel.name = 'MONTAGEPLATE_MODEL';
+        cabinetModel.add(montageModel);
+        alignMontageToCabinet(cabinetModel, montageModel);
+        currentMontageModel = montageModel;
+        updateMontageMeshVisibility();
+      },
+      undefined,
+      (err) => {
+        if (candidateIndex + 1 < candidates.length) {
+          tryLoad(candidateIndex + 1);
+        } else {
+          console.error(`Failed to load montage model (${candidates.join(', ')}):`, err);
+        }
+      }
+    );
+  };
+
+  tryLoad(0);
 }
 
 function disposeModel(obj: THREE.Object3D) {
