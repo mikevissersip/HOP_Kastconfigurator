@@ -66,7 +66,7 @@ stage.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.enablePan = false;
-controls.minDistance = 1.5;
+controls.minDistance = 0.45;
 controls.maxDistance = 10;
 controls.autoRotate = true;
 controls.autoRotateSpeed = 1.5;
