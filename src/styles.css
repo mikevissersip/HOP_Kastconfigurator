@@ -958,4 +958,37 @@ a {
     top: 35px;
   }
 
+  .choice-option{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px;
+    min-height: 48px;
+    padding: 42px 5px;
+    border: 1px solid rgba(12, 27, 46, 0.1);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--nav-blue);
+    font-weight: 700;
+    font-size: 0.6rem;
+    
+  }
+  
+  
+  
+  .io-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px;
+    min-height: 48px;
+    padding: 12px 5px;
+    border: 1px solid rgba(12, 27, 46, 0.1);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--nav-blue);
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+
 }
