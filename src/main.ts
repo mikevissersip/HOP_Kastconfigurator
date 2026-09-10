@@ -220,7 +220,7 @@ function alignMontageToCabinet(cabinetModel: THREE.Object3D, montageModel: THREE
 }
 
 function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
-  const montageFile = cabinetFile.replace(/(^|\/)kast\.gltf$/i, '$1montageplaat.gltf');
+  const montageFile = cabinetFile.replace(/(^|\/)kast\.gltf$/i, '$1MontagePlaat.gltf');
   if (montageFile === cabinetFile) return;
 
   loader.load(
