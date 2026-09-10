@@ -96,6 +96,8 @@ scene.add(sideLight);
 const loader = new GLTFLoader();
 let currentModel: THREE.Object3D | null = null;
 let currentMontageModel: THREE.Object3D | null = null;
+let automaticClampGroup: THREE.Group | null = null;
+let automaticClampLoadToken = 0;
 let currentTimeout: number | null = null;
 
 const montageMeshNames = [
@@ -237,6 +239,7 @@ function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
         alignMontageToCabinet(cabinetModel, montageModel);
         currentMontageModel = montageModel;
         updateMontageMeshVisibility();
+        syncAutomaticClamps();
       },
       undefined,
       (err) => {
@@ -250,6 +253,103 @@ function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
   };
 
   tryLoad(0);
+}
+
+function getAutomaticClampCount() {
+  if (configuratorState.voltage === '230 VAC') return 2;
+  if (configuratorState.voltage === '400 VAC') return 4;
+  return 0;
+}
+
+function clearAutomaticClamps() {
+  automaticClampLoadToken += 1;
+  if (automaticClampGroup?.parent) automaticClampGroup.parent.remove(automaticClampGroup);
+  automaticClampGroup = null;
+}
+
+function alignClampToDinRail(clamp: THREE.Object3D, index: number) {
+  if (!currentMontageModel || !currentModel || !automaticClampGroup) return;
+
+  const rail = currentMontageModel.getObjectByName('DIN-RAIL_2');
+  const railSurface = currentMontageModel.getObjectByName('SURFACE_DIN-RAIL_2');
+  const mountingPoint = clamp.getObjectByName('MOUNTING_POINT');
+  const leftSide = clamp.getObjectByName('LEFT_SIDE');
+  const rightSide = clamp.getObjectByName('RIGHT_SIDE');
+  if (!rail || !railSurface || !mountingPoint || !leftSide || !rightSide) {
+    console.warn('Could not place A2C2.5: missing DIN rail or clamp reference point');
+    return;
+  }
+
+  currentModel.updateMatrixWorld(true);
+  clamp.updateMatrixWorld(true);
+
+  const railBounds = new THREE.Box3().setFromObject(rail);
+  const railSurfacePosition = new THREE.Vector3();
+  railSurface.getWorldPosition(railSurfacePosition);
+
+  const currentWorldQuaternion = new THREE.Quaternion();
+  const parentWorldQuaternion = new THREE.Quaternion();
+  clamp.getWorldQuaternion(currentWorldQuaternion);
+  automaticClampGroup.getWorldQuaternion(parentWorldQuaternion);
+
+  const normalRotation = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 0, 1)
+  );
+  const rotatedHorizontal = new THREE.Vector3(1, 0, 0).applyQuaternion(normalRotation);
+  const horizontalRotation = new THREE.Quaternion().setFromUnitVectors(
+    rotatedHorizontal,
+    new THREE.Vector3(1, 0, 0)
+  );
+  const alignmentRotation = horizontalRotation.multiply(normalRotation);
+  const desiredWorldQuaternion = alignmentRotation.multiply(currentWorldQuaternion);
+  clamp.quaternion.copy(parentWorldQuaternion.invert().multiply(desiredWorldQuaternion));
+  clamp.updateMatrixWorld(true);
+
+  const mountingWorldPosition = new THREE.Vector3();
+  const leftWorldPosition = new THREE.Vector3();
+  const rightWorldPosition = new THREE.Vector3();
+  mountingPoint.getWorldPosition(mountingWorldPosition);
+  leftSide.getWorldPosition(leftWorldPosition);
+  rightSide.getWorldPosition(rightWorldPosition);
+  const referenceWidth = rightWorldPosition.x - leftWorldPosition.x;
+  const clampBounds = new THREE.Box3().setFromObject(clamp);
+  const clampWidth = clampBounds.max.x - clampBounds.min.x || referenceWidth;
+  const clampLeftOffset = clampBounds.min.x - mountingWorldPosition.x;
+
+  const desiredMountingWorldPosition = railSurfacePosition.clone();
+  desiredMountingWorldPosition.x = railBounds.min.x - clampLeftOffset + index * clampWidth;
+  const desiredMountingLocalPosition = automaticClampGroup.worldToLocal(desiredMountingWorldPosition);
+  const currentMountingLocalPosition = automaticClampGroup.worldToLocal(mountingWorldPosition);
+  clamp.position.add(desiredMountingLocalPosition.sub(currentMountingLocalPosition));
+}
+
+function syncAutomaticClamps() {
+  clearAutomaticClamps();
+  const count = getAutomaticClampCount();
+  if (!count || !currentModel || !currentMontageModel) return;
+
+  const loadToken = automaticClampLoadToken;
+  const group = new THREE.Group();
+  group.name = 'AUTOMATIC_CLAMPS';
+  currentModel.add(group);
+  automaticClampGroup = group;
+
+  loader.load(
+    `${import.meta.env.BASE_URL}Componenten/Klemmen/A2C2.5/component.gltf`,
+    (gltf) => {
+      if (loadToken !== automaticClampLoadToken || group !== automaticClampGroup) return;
+      for (let index = 0; index < count; index += 1) {
+        const clamp = gltf.scene.clone(true);
+        clamp.name = `A2C2.5-${index + 1}`;
+        group.add(clamp);
+        alignClampToDinRail(clamp, index);
+      }
+      updateFrontPreview();
+    },
+    undefined,
+    (err) => console.error('Failed to load A2C2.5 clamp:', err)
+  );
 }
 
 function disposeModel(obj: THREE.Object3D) {
@@ -305,6 +405,7 @@ function loadModelFile(filename: string) {
         currentModel = null;
       }
       currentMontageModel = null;
+      automaticClampGroup = null;
 
       const model = gltf.scene;
 
@@ -746,6 +847,8 @@ function updateFrontPreview() {
     if (montageModel) {
       montageModel.traverse((object) => { object.visible = true; });
     }
+    const clamps = cloned.getObjectByName('AUTOMATIC_CLAMPS');
+    if (clamps) clamps.traverse((object) => { object.visible = true; });
     cloned.traverse((object) => {
       const componentId = object.userData.mountedComponentId as string | undefined;
       if (componentId && visibleComponentIds.has(componentId)) {
@@ -1074,6 +1177,7 @@ document.querySelectorAll<HTMLInputElement>('input[name="voltage"]').forEach((in
   input.addEventListener('change', () => {
     configuratorState.voltage = input.value as ConfiguratorState['voltage'];
     updateNextButtonStates();
+    syncAutomaticClamps();
   });
 });
 
