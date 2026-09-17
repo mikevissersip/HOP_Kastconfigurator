@@ -420,37 +420,27 @@ function syncAutomaticClamps() {
   const hasAutomaticBreaker = Boolean(configuratorState.voltage && configuratorState.voltage !== '24 VDC'
     && configuratorState.breakerBrand);
   const has24VBreaker = Boolean(configuratorState.voltage);
-  if ((!count && !hasAutomaticBreaker && !has24VBreaker)
+  const hasPowerSupply = Boolean(configuratorState.powerSupply);
+  if ((!count && !hasAutomaticBreaker && !has24VBreaker && !hasPowerSupply)
     || !currentModel || !currentMontageModel) return;
 
   const loadToken = automaticClampLoadToken;
   if (count) {
-    const group = new THREE.Group();
-    group.name = 'AUTOMATIC_CLAMPS';
-    currentModel.add(group);
-    automaticClampGroup = group;
-
-    loader.load(
-      `${import.meta.env.BASE_URL}Componenten/Klemmen/A2C2.5/component.gltf`,
-      (gltf) => {
-        if (loadToken !== automaticClampLoadToken || group !== automaticClampGroup) return;
-        for (let index = 0; index < count; index += 1) {
-          const clamp = gltf.scene.clone(true);
-          clamp.name = `A2C2.5-${index + 1}`;
-          group.add(clamp);
-          alignComponentToDinRail(clamp, index, 2, group);
-        }
-        updateFrontPreview();
-      },
-      undefined,
-      (err) => console.error('Failed to load A2C2.5 clamp:', err)
-    );
+    const clampGroup = new THREE.Group();
+    clampGroup.name = 'AUTOMATIC_CLAMPS';
+    currentModel.add(clampGroup);
+    automaticClampGroup = clampGroup;
   }
 
   const breakerGroup = new THREE.Group();
   breakerGroup.name = 'AUTOMATIC_BREAKER';
   currentModel.add(breakerGroup);
   automaticBreakerGroup = breakerGroup;
+
+  const loadComponent = (file: string) => new Promise<THREE.Object3D>((resolve, reject) => {
+    loader.load(`${import.meta.env.BASE_URL}${file}`, (gltf) => resolve(gltf.scene), undefined, reject);
+  });
+
   const getRightSideX = (component: THREE.Object3D) => {
     currentModel!.updateMatrixWorld(true);
     const rightSide = component.getObjectByName('RIGHT_SIDE');
@@ -460,63 +450,90 @@ function syncAutomaticClamps() {
     return rightSidePosition.x;
   };
 
-  const load24VBreaker = (contactX?: number) => {
-    loader.load(
-      `${import.meta.env.BASE_URL}Componenten/Installatieautomaten/24V/component.gltf`,
-      (gltf) => {
-        if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
-        const breaker = gltf.scene.clone(true);
-        breaker.name = 'INSTALLATIEAUTOMAAT-24V';
-        breakerGroup.add(breaker);
-        alignComponentToDinRail(breaker, hasAutomaticBreaker ? 1 : 0, 1, breakerGroup, contactX);
-        updateFrontPreview();
-      },
-      undefined,
-      (err) => console.error('Failed to load 24V breaker:', err)
-    );
+  const loadDocked = async (
+    file: string,
+    name: string,
+    contactX?: number,
+    targetGroup = breakerGroup,
+    railNumber: 1 | 2 = 1,
+  ) => {
+    const model = await loadComponent(file);
+    if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return undefined;
+    model.name = name;
+    targetGroup.add(model);
+    alignComponentToDinRail(model, 0, railNumber, targetGroup, contactX);
+    return getRightSideX(model);
   };
 
-  const loadPowerSupply = (contactX: number) => {
-    if (!configuratorState.powerSupply) {
-      load24VBreaker(contactX);
-      return;
+  void (async () => {
+    if (count && automaticClampGroup) {
+      let clampContactX = await loadDocked(
+        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        'AEB35SC1-voedingsklemmen-links',
+        undefined,
+        automaticClampGroup,
+        2,
+      );
+      const clampModel = await loadComponent('Componenten/Klemmen/A2C2.5/component.gltf');
+      if (loadToken === automaticClampLoadToken && automaticClampGroup) {
+        for (let index = 0; index < count; index += 1) {
+          const clamp = clampModel.clone(true);
+          clamp.name = `A2C2.5-${index + 1}`;
+          automaticClampGroup.add(clamp);
+          alignComponentToDinRail(clamp, index, 2, automaticClampGroup, clampContactX);
+          clampContactX = getRightSideX(clamp);
+        }
+        await loadDocked(
+          `Componenten/Klemmen/AEB35SC1/component.gltf`,
+          'AEB35SC1-voedingsklemmen-rechts',
+          clampContactX,
+          automaticClampGroup,
+          2,
+        );
+      }
     }
 
-    const powerSupplyBrand = configuratorState.powerSupply;
-    loader.load(
-      `${import.meta.env.BASE_URL}Componenten/Voedingen/${powerSupplyBrand}/component.gltf`,
-      (gltf) => {
-        if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
-        const powerSupply = gltf.scene.clone(true);
-        powerSupply.name = `VOEDING-${powerSupplyBrand}`;
-        breakerGroup.add(powerSupply);
-        alignComponentToDinRail(powerSupply, 1, 1, breakerGroup, contactX);
-        load24VBreaker(getRightSideX(powerSupply));
-      },
-      undefined,
-      (err) => console.error(`Failed to load ${powerSupplyBrand} power supply:`, err)
-    );
-  };
+    let contactX: number | undefined;
+    if (hasAutomaticBreaker) {
+      contactX = await loadDocked(
+        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        'AEB35SC1-automaat-links',
+      );
+      const breakerBrand = configuratorState.breakerBrand!.toUpperCase();
+      contactX = await loadDocked(
+        `Componenten/Installatieautomaten/230V/${breakerBrand}/component.gltf`,
+        `INSTALLATIEAUTOMAAT-${breakerBrand}`,
+        contactX,
+      );
+      contactX = await loadDocked(
+        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        'AEB35SC1-automaat-rechts',
+        contactX,
+      );
+    }
 
-  if (hasAutomaticBreaker) {
-    const breakerBrand = configuratorState.breakerBrand!.toUpperCase();
-    loader.load(
-      `${import.meta.env.BASE_URL}Componenten/Installatieautomaten/230V/${breakerBrand}/component.gltf`,
-      (gltf) => {
-        if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
-        const breaker = gltf.scene.clone(true);
-        breaker.name = `INSTALLATIEAUTOMAAT-${breakerBrand}`;
-        breakerGroup.add(breaker);
-        alignComponentToDinRail(breaker, 0, 1, breakerGroup);
-        const breakerRightSideX = getRightSideX(breaker);
-        loadPowerSupply(breakerRightSideX ?? 0);
-      },
-      undefined,
-      (err) => console.error(`Failed to load ${breakerBrand} breaker:`, err)
-    );
-  } else {
-    load24VBreaker();
-  }
+    if (hasPowerSupply) {
+      contactX = await loadDocked(
+        `Componenten/Voedingen/${configuratorState.powerSupply}/component.gltf`,
+        `VOEDING-${configuratorState.powerSupply}`,
+        contactX,
+      );
+    }
+
+    if (has24VBreaker) {
+      contactX = await loadDocked(
+        `Componenten/Installatieautomaten/24V/component.gltf`,
+        'INSTALLATIEAUTOMAAT-24V',
+        contactX,
+      );
+      await loadDocked(
+        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        'AEB35SC1-24V-rechts',
+        contactX,
+      );
+    }
+    updateFrontPreview();
+  })().catch((err) => console.error('Failed to load automatic DIN rail components:', err));
 }
 
 function disposeModel(obj: THREE.Object3D) {
