@@ -151,6 +151,7 @@ const loader = new GLTFLoader();
 let currentModel: THREE.Object3D | null = null;
 let currentMontageModel: THREE.Object3D | null = null;
 let automaticClampGroup: THREE.Group | null = null;
+let automaticBreakerGroup: THREE.Group | null = null;
 let automaticClampLoadToken = 0;
 let currentTimeout: number | null = null;
 
@@ -315,50 +316,38 @@ function getAutomaticClampCount() {
   return 0;
 }
 
-function clearAutomaticClamps() {
+function clearAutomaticComponents() {
   automaticClampLoadToken += 1;
   if (automaticClampGroup?.parent) automaticClampGroup.parent.remove(automaticClampGroup);
+  if (automaticBreakerGroup?.parent) automaticBreakerGroup.parent.remove(automaticBreakerGroup);
   automaticClampGroup = null;
+  automaticBreakerGroup = null;
 }
 
-function alignClampToDinRail(clamp: THREE.Object3D, index: number) {
-  if (!currentMontageModel || !currentModel || !automaticClampGroup) return;
+function alignComponentToDinRail(
+  component: THREE.Object3D,
+  index: number,
+  railNumber: 1 | 2,
+  group: THREE.Group,
+) {
+  if (!currentMontageModel || !currentModel) return;
 
-  const rail = currentMontageModel.getObjectByName('DIN-RAIL_2');
-  const railSurface = currentMontageModel.getObjectByName('SURFACE_DIN-RAIL_2');
-  const mountingPoint = clamp.getObjectByName('MOUNTING_POINT');
-  const leftSide = clamp.getObjectByName('LEFT_SIDE');
-  const rightSide = clamp.getObjectByName('RIGHT_SIDE');
+  const rail = currentMontageModel.getObjectByName(`DIN-RAIL_${railNumber}`);
+  const railSurface = currentMontageModel.getObjectByName(`SURFACE_DIN-RAIL_${railNumber}`);
+  const mountingPoint = component.getObjectByName('MOUNTING_POINT');
+  const leftSide = component.getObjectByName('LEFT_SIDE');
+  const rightSide = component.getObjectByName('RIGHT_SIDE');
   if (!rail || !railSurface || !mountingPoint || !leftSide || !rightSide) {
-    console.warn('Could not place A2C2.5: missing DIN rail or clamp reference point');
+    console.warn('Could not place automatic component: missing DIN rail or component reference point');
     return;
   }
 
   currentModel.updateMatrixWorld(true);
-  clamp.updateMatrixWorld(true);
+  component.updateMatrixWorld(true);
 
   const railBounds = new THREE.Box3().setFromObject(rail);
   const railSurfacePosition = new THREE.Vector3();
   railSurface.getWorldPosition(railSurfacePosition);
-
-  const currentWorldQuaternion = new THREE.Quaternion();
-  const parentWorldQuaternion = new THREE.Quaternion();
-  clamp.getWorldQuaternion(currentWorldQuaternion);
-  automaticClampGroup.getWorldQuaternion(parentWorldQuaternion);
-
-  const normalRotation = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(0, 0, 1)
-  );
-  const rotatedHorizontal = new THREE.Vector3(1, 0, 0).applyQuaternion(normalRotation);
-  const horizontalRotation = new THREE.Quaternion().setFromUnitVectors(
-    rotatedHorizontal,
-    new THREE.Vector3(1, 0, 0)
-  );
-  const alignmentRotation = horizontalRotation.multiply(normalRotation);
-  const desiredWorldQuaternion = alignmentRotation.multiply(currentWorldQuaternion);
-  clamp.quaternion.copy(parentWorldQuaternion.invert().multiply(desiredWorldQuaternion));
-  clamp.updateMatrixWorld(true);
 
   const mountingWorldPosition = new THREE.Vector3();
   const leftWorldPosition = new THREE.Vector3();
@@ -366,43 +355,107 @@ function alignClampToDinRail(clamp: THREE.Object3D, index: number) {
   mountingPoint.getWorldPosition(mountingWorldPosition);
   leftSide.getWorldPosition(leftWorldPosition);
   rightSide.getWorldPosition(rightWorldPosition);
-  const referenceWidth = rightWorldPosition.x - leftWorldPosition.x;
-  const clampBounds = new THREE.Box3().setFromObject(clamp);
-  const clampWidth = clampBounds.max.x - clampBounds.min.x || referenceWidth;
-  const clampLeftOffset = clampBounds.min.x - mountingWorldPosition.x;
+
+  const currentWorldQuaternion = new THREE.Quaternion();
+  const parentWorldQuaternion = new THREE.Quaternion();
+  component.getWorldQuaternion(currentWorldQuaternion);
+  group.getWorldQuaternion(parentWorldQuaternion);
+
+  const snapToAxis = (direction: THREE.Vector3) => {
+    const axis = new THREE.Vector3();
+    const absolute = [Math.abs(direction.x), Math.abs(direction.y), Math.abs(direction.z)];
+    const axisIndex = absolute.indexOf(Math.max(...absolute));
+    axis.setComponent(axisIndex, Math.sign(direction.getComponent(axisIndex)) || 1);
+    return axis;
+  };
+
+  const componentHorizontal = snapToAxis(rightWorldPosition.clone().sub(leftWorldPosition));
+  const componentMiddle = leftWorldPosition.clone().add(rightWorldPosition).multiplyScalar(0.5);
+  const componentNormal = snapToAxis(mountingWorldPosition.clone().sub(componentMiddle));
+  const componentVertical = componentNormal.clone().cross(componentHorizontal).normalize();
+  const sourceFrame = new THREE.Matrix4().makeBasis(
+    componentHorizontal,
+    componentVertical,
+    componentNormal,
+  );
+  const railFrame = getMountingFrame(railSurface);
+  const targetHorizontal = snapToAxis(railFrame.horizontal);
+  const targetNormal = snapToAxis(railFrame.normal.clone().negate());
+  const targetVertical = targetNormal.clone().cross(targetHorizontal).normalize();
+  const targetFrame = new THREE.Matrix4().makeBasis(
+    targetHorizontal,
+    targetVertical,
+    targetNormal,
+  );
+  const alignmentRotation = targetFrame.multiply(sourceFrame.invert());
+  const alignmentQuaternion = new THREE.Quaternion().setFromRotationMatrix(alignmentRotation);
+  const desiredWorldQuaternion = alignmentQuaternion.multiply(currentWorldQuaternion);
+  component.quaternion.copy(parentWorldQuaternion.invert().multiply(desiredWorldQuaternion));
+  component.updateMatrixWorld(true);
+
+  mountingPoint.getWorldPosition(mountingWorldPosition);
+  leftSide.getWorldPosition(leftWorldPosition);
+  rightSide.getWorldPosition(rightWorldPosition);
+  const componentWidth = rightWorldPosition.x - leftWorldPosition.x;
+  const componentLeftOffset = leftWorldPosition.x - mountingWorldPosition.x;
 
   const desiredMountingWorldPosition = railSurfacePosition.clone();
-  desiredMountingWorldPosition.x = railBounds.min.x - clampLeftOffset + index * clampWidth;
-  const desiredMountingLocalPosition = automaticClampGroup.worldToLocal(desiredMountingWorldPosition);
-  const currentMountingLocalPosition = automaticClampGroup.worldToLocal(mountingWorldPosition);
-  clamp.position.add(desiredMountingLocalPosition.sub(currentMountingLocalPosition));
+  const railStart = componentWidth < 0 ? railBounds.max.x : railBounds.min.x;
+  desiredMountingWorldPosition.x = railStart - componentLeftOffset + index * componentWidth;
+  const desiredMountingLocalPosition = group.worldToLocal(desiredMountingWorldPosition);
+  const currentMountingLocalPosition = group.worldToLocal(mountingWorldPosition);
+  component.position.add(desiredMountingLocalPosition.sub(currentMountingLocalPosition));
 }
 
 function syncAutomaticClamps() {
-  clearAutomaticClamps();
+  clearAutomaticComponents();
   const count = getAutomaticClampCount();
-  if (!count || !currentModel || !currentMontageModel) return;
+  if ((!count && !(configuratorState.voltage === '230 VAC' && configuratorState.breakerBrand))
+    || !currentModel || !currentMontageModel) return;
 
   const loadToken = automaticClampLoadToken;
-  const group = new THREE.Group();
-  group.name = 'AUTOMATIC_CLAMPS';
-  currentModel.add(group);
-  automaticClampGroup = group;
+  if (count) {
+    const group = new THREE.Group();
+    group.name = 'AUTOMATIC_CLAMPS';
+    currentModel.add(group);
+    automaticClampGroup = group;
 
+    loader.load(
+      `${import.meta.env.BASE_URL}Componenten/Klemmen/A2C2.5/component.gltf`,
+      (gltf) => {
+        if (loadToken !== automaticClampLoadToken || group !== automaticClampGroup) return;
+        for (let index = 0; index < count; index += 1) {
+          const clamp = gltf.scene.clone(true);
+          clamp.name = `A2C2.5-${index + 1}`;
+          group.add(clamp);
+          alignComponentToDinRail(clamp, index, 2, group);
+        }
+        updateFrontPreview();
+      },
+      undefined,
+      (err) => console.error('Failed to load A2C2.5 clamp:', err)
+    );
+  }
+
+  if (configuratorState.voltage !== '230 VAC' || !configuratorState.breakerBrand) return;
+
+  const breakerGroup = new THREE.Group();
+  breakerGroup.name = 'AUTOMATIC_BREAKER';
+  currentModel.add(breakerGroup);
+  automaticBreakerGroup = breakerGroup;
+  const breakerBrand = configuratorState.breakerBrand.toUpperCase();
   loader.load(
-    `${import.meta.env.BASE_URL}Componenten/Klemmen/A2C2.5/component.gltf`,
+    `${import.meta.env.BASE_URL}Componenten/Installatieautomaten/230V/${breakerBrand}/component.gltf`,
     (gltf) => {
-      if (loadToken !== automaticClampLoadToken || group !== automaticClampGroup) return;
-      for (let index = 0; index < count; index += 1) {
-        const clamp = gltf.scene.clone(true);
-        clamp.name = `A2C2.5-${index + 1}`;
-        group.add(clamp);
-        alignClampToDinRail(clamp, index);
-      }
+      if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
+      const breaker = gltf.scene.clone(true);
+      breaker.name = `INSTALLATIEAUTOMAAT-${breakerBrand}`;
+      breakerGroup.add(breaker);
+      alignComponentToDinRail(breaker, 0, 1, breakerGroup);
       updateFrontPreview();
     },
     undefined,
-    (err) => console.error('Failed to load A2C2.5 clamp:', err)
+    (err) => console.error(`Failed to load ${breakerBrand} breaker:`, err)
   );
 }
 
@@ -460,6 +513,7 @@ function loadModelFile(filename: string) {
       }
       currentMontageModel = null;
       automaticClampGroup = null;
+      automaticBreakerGroup = null;
 
       const model = gltf.scene;
 
@@ -903,6 +957,8 @@ function updateFrontPreview() {
     }
     const clamps = cloned.getObjectByName('AUTOMATIC_CLAMPS');
     if (clamps) clamps.traverse((object) => { object.visible = true; });
+    const breaker = cloned.getObjectByName('AUTOMATIC_BREAKER');
+    if (breaker) breaker.traverse((object) => { object.visible = true; });
     cloned.traverse((object) => {
       const componentId = object.userData.mountedComponentId as string | undefined;
       if (componentId && visibleComponentIds.has(componentId)) {
@@ -1239,6 +1295,7 @@ document.querySelectorAll<HTMLInputElement>('input[name="breakerBrand"]').forEac
   input.addEventListener('change', () => {
     configuratorState.breakerBrand = input.value as ConfiguratorState['breakerBrand'];
     updateNextButtonStates();
+    syncAutomaticClamps();
   });
 });
 
