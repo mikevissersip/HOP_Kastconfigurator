@@ -329,6 +329,7 @@ function alignComponentToDinRail(
   index: number,
   railNumber: 1 | 2,
   group: THREE.Group,
+  contactX?: number,
 ) {
   if (!currentMontageModel || !currentModel) return;
 
@@ -380,6 +381,7 @@ function alignComponentToDinRail(
   );
   const railFrame = getMountingFrame(railSurface);
   const targetHorizontal = snapToAxis(railFrame.horizontal);
+  if (targetHorizontal.x < 0) targetHorizontal.negate();
   const targetNormal = snapToAxis(railFrame.normal.clone().negate());
   const targetVertical = targetNormal.clone().cross(targetHorizontal).normalize();
   const targetFrame = new THREE.Matrix4().makeBasis(
@@ -397,20 +399,28 @@ function alignComponentToDinRail(
   leftSide.getWorldPosition(leftWorldPosition);
   rightSide.getWorldPosition(rightWorldPosition);
   const componentWidth = rightWorldPosition.x - leftWorldPosition.x;
+  const dockWidth = Math.abs(componentWidth);
   const componentLeftOffset = leftWorldPosition.x - mountingWorldPosition.x;
 
   const desiredMountingWorldPosition = railSurfacePosition.clone();
-  const railStart = componentWidth < 0 ? railBounds.max.x : railBounds.min.x;
-  desiredMountingWorldPosition.x = railStart - componentLeftOffset + index * componentWidth;
+  if (contactX !== undefined) {
+    desiredMountingWorldPosition.x = contactX - componentLeftOffset;
+  } else {
+    desiredMountingWorldPosition.x = railBounds.min.x - componentLeftOffset + index * dockWidth;
+  }
   const desiredMountingLocalPosition = group.worldToLocal(desiredMountingWorldPosition);
   const currentMountingLocalPosition = group.worldToLocal(mountingWorldPosition);
   component.position.add(desiredMountingLocalPosition.sub(currentMountingLocalPosition));
+  return dockWidth;
 }
 
 function syncAutomaticClamps() {
   clearAutomaticComponents();
   const count = getAutomaticClampCount();
-  if ((!count && !(configuratorState.voltage === '230 VAC' && configuratorState.breakerBrand))
+  const hasAutomaticBreaker = Boolean(configuratorState.voltage && configuratorState.voltage !== '24 VDC'
+    && configuratorState.breakerBrand);
+  const has24VBreaker = Boolean(configuratorState.voltage);
+  if ((!count && !hasAutomaticBreaker && !has24VBreaker)
     || !currentModel || !currentMontageModel) return;
 
   const loadToken = automaticClampLoadToken;
@@ -437,26 +447,76 @@ function syncAutomaticClamps() {
     );
   }
 
-  if (configuratorState.voltage !== '230 VAC' || !configuratorState.breakerBrand) return;
-
   const breakerGroup = new THREE.Group();
   breakerGroup.name = 'AUTOMATIC_BREAKER';
   currentModel.add(breakerGroup);
   automaticBreakerGroup = breakerGroup;
-  const breakerBrand = configuratorState.breakerBrand.toUpperCase();
-  loader.load(
-    `${import.meta.env.BASE_URL}Componenten/Installatieautomaten/230V/${breakerBrand}/component.gltf`,
-    (gltf) => {
-      if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
-      const breaker = gltf.scene.clone(true);
-      breaker.name = `INSTALLATIEAUTOMAAT-${breakerBrand}`;
-      breakerGroup.add(breaker);
-      alignComponentToDinRail(breaker, 0, 1, breakerGroup);
-      updateFrontPreview();
-    },
-    undefined,
-    (err) => console.error(`Failed to load ${breakerBrand} breaker:`, err)
-  );
+  const getRightSideX = (component: THREE.Object3D) => {
+    currentModel!.updateMatrixWorld(true);
+    const rightSide = component.getObjectByName('RIGHT_SIDE');
+    if (!rightSide) return undefined;
+    const rightSidePosition = new THREE.Vector3();
+    rightSide.getWorldPosition(rightSidePosition);
+    return rightSidePosition.x;
+  };
+
+  const load24VBreaker = (contactX?: number) => {
+    loader.load(
+      `${import.meta.env.BASE_URL}Componenten/Installatieautomaten/24V/component.gltf`,
+      (gltf) => {
+        if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
+        const breaker = gltf.scene.clone(true);
+        breaker.name = 'INSTALLATIEAUTOMAAT-24V';
+        breakerGroup.add(breaker);
+        alignComponentToDinRail(breaker, hasAutomaticBreaker ? 1 : 0, 1, breakerGroup, contactX);
+        updateFrontPreview();
+      },
+      undefined,
+      (err) => console.error('Failed to load 24V breaker:', err)
+    );
+  };
+
+  const loadPowerSupply = (contactX: number) => {
+    if (!configuratorState.powerSupply) {
+      load24VBreaker(contactX);
+      return;
+    }
+
+    const powerSupplyBrand = configuratorState.powerSupply;
+    loader.load(
+      `${import.meta.env.BASE_URL}Componenten/Voedingen/${powerSupplyBrand}/component.gltf`,
+      (gltf) => {
+        if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
+        const powerSupply = gltf.scene.clone(true);
+        powerSupply.name = `VOEDING-${powerSupplyBrand}`;
+        breakerGroup.add(powerSupply);
+        alignComponentToDinRail(powerSupply, 1, 1, breakerGroup, contactX);
+        load24VBreaker(getRightSideX(powerSupply));
+      },
+      undefined,
+      (err) => console.error(`Failed to load ${powerSupplyBrand} power supply:`, err)
+    );
+  };
+
+  if (hasAutomaticBreaker) {
+    const breakerBrand = configuratorState.breakerBrand!.toUpperCase();
+    loader.load(
+      `${import.meta.env.BASE_URL}Componenten/Installatieautomaten/230V/${breakerBrand}/component.gltf`,
+      (gltf) => {
+        if (loadToken !== automaticClampLoadToken || breakerGroup !== automaticBreakerGroup) return;
+        const breaker = gltf.scene.clone(true);
+        breaker.name = `INSTALLATIEAUTOMAAT-${breakerBrand}`;
+        breakerGroup.add(breaker);
+        alignComponentToDinRail(breaker, 0, 1, breakerGroup);
+        const breakerRightSideX = getRightSideX(breaker);
+        loadPowerSupply(breakerRightSideX ?? 0);
+      },
+      undefined,
+      (err) => console.error(`Failed to load ${breakerBrand} breaker:`, err)
+    );
+  } else {
+    load24VBreaker();
+  }
 }
 
 function disposeModel(obj: THREE.Object3D) {
@@ -1303,6 +1363,7 @@ document.querySelectorAll<HTMLInputElement>('input[name="powerSupply"]').forEach
   input.addEventListener('change', () => {
     configuratorState.powerSupply = input.value as ConfiguratorState['powerSupply'];
     updateNextButtonStates();
+    syncAutomaticClamps();
   });
 });
 
