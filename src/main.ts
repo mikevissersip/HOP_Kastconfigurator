@@ -6,6 +6,21 @@ import { cabinetCatalog } from './cabinetCatalog';
 const stage = document.getElementById('viewer-stage');
 if (!stage) throw new Error('Viewer stage not found');
 
+const landingPage = document.getElementById('landing-page');
+const configuratorContent = document.getElementById('configurator-content');
+const startConfiguratorBtn = document.getElementById('start-configurator-btn');
+const backToLandingBtn = document.getElementById('back-to-landing-btn');
+
+function setConfiguratorVisible(visible: boolean) {
+  if (landingPage) landingPage.hidden = visible;
+  if (configuratorContent) configuratorContent.hidden = !visible;
+  if (visible) window.dispatchEvent(new Event('resize'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+startConfiguratorBtn?.addEventListener('click', () => setConfiguratorVisible(true));
+backToLandingBtn?.addEventListener('click', () => setConfiguratorVisible(false));
+
 const frontView2d = document.getElementById('front-view-2d') as HTMLDivElement | null;
 const frontViewCanvas = document.createElement('canvas');
 frontViewCanvas.className = 'front-view-canvas';
@@ -1077,10 +1092,11 @@ function showStep(step: ConfiguratorStep) {
   if (configStep4) configStep4.hidden = step !== 4;
   if (configStep5) configStep5.hidden = step !== 5;
   if (configStep6) configStep6.hidden = step !== 6;
-  if (componentLayout && step4ComponentHost && step5ComponentHost && step6ComponentHost) {
-    if (step === 4) step4ComponentHost.appendChild(componentLayout);
-    else if (step === 5) step5ComponentHost.appendChild(componentLayout);
-    else if (step === 6) step6ComponentHost.appendChild(componentLayout);
+  if (componentLayout) {
+    componentLayout.hidden = true;
+    if (step === 4 && step4ComponentHost) step4ComponentHost.appendChild(componentLayout);
+    else if (step === 5 && step5ComponentHost) step5ComponentHost.appendChild(componentLayout);
+    else if (step === 6 && step6ComponentHost) step6ComponentHost.appendChild(componentLayout);
     else if (configStep3 && step3Footer) configStep3.insertBefore(componentLayout, step3Footer);
   }
   componentView = step === 4 ? 'bottom' : step === 5 ? 'left' : step === 6 ? 'mountingPlate' : 'front';

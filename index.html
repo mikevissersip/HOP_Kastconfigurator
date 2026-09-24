@@ -49,7 +49,48 @@
 
         </header>
 
-      <main class="content">
+      <main>
+        <section id="landing-page" class="landing-page" aria-labelledby="landing-title">
+          <div class="landing-inner">
+            <div class="landing-copy">
+              <p class="landing-eyebrow">HOPPENBROUWERS · SCHAKELKASTCONFIGURATOR</p>
+              <h1 id="landing-title">Ontwerp jouw schakelkast.</h1>
+              <p class="landing-intro">
+                Stel stap voor stap een passende schakelkast samen. Kies de behuizing,
+                spanning en componenten en bekijk direct het resultaat in 3D.
+              </p>
+              <div class="landing-actions">
+                <button id="start-configurator-btn" class="landing-cta" type="button">
+                  <span>Start configurator</span>
+                  <span class="landing-cta-arrow" aria-hidden="true">&#8594;</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="landing-visual" aria-label="Voorbeeld van een besturingskast">
+              <div class="landing-grid" aria-hidden="true"></div>
+              <img class="landing-cabinet-image" src="/images/Besturingskast.png.webp" alt="Besturingskast met gemonteerde besturingscomponenten" />
+            </div>
+          </div>
+
+          <div class="landing-steps" aria-label="Werkwijze">
+            <article class="landing-step">
+              <span class="landing-step-number">01</span>
+              <div><h2>Configureer</h2><p>Configureer een schakelkast naar jouw behoeften.</p></div>
+            </article>
+            <article class="landing-step">
+              <span class="landing-step-number">02</span>
+              <div><h2>Genereer</h2><p>Genereer automatisch een vrijblijvende offerte inclusief EPLAN en ProPanel tekeningen.</p></div>
+            </article>
+            <article class="landing-step">
+              <span class="landing-step-number">03</span>
+              <div><h2>Bestel</h2><p>Bestel jouw geconfigureerde schakelkast volledig afgestemd op jouw behoeften.</p></div>
+            </article>
+          </div>
+        </section>
+
+        <div id="configurator-content" class="content" hidden>
+          <button id="back-to-landing-btn" class="back-to-landing" type="button">&#8592; Terug naar start</button>
         <div class="viewer-grid">
           <aside 
               id="viewer-stage-left"
@@ -118,6 +159,7 @@
                <label class="choice-option brand-choice"><input type="radio" name="powerSupply" value="Weidmuller"> <img src="/images/Weidmuller_Logo.png" alt="Weidmuller"><span>Weidmuller voeding</span></label>
                <label class="choice-option brand-choice"><input type="radio" name="powerSupply" value="Phoenix"> <img src="/images/Phoenix_Logo.png" alt="Phoenix"><span>Phoenix voeding</span></label>
              </div>
+             <div id="step4-component-host" class="component-layout-host"></div>
              <div class="panel-footer">
               <button id="step4-back-btn" class="back-btn">Vorige</button>
               <button id="step4-next-btn" class="next-btn">Volgende</button>
@@ -131,6 +173,7 @@
                <label class="choice-row"><span>Verwarming</span><select name="heating"><option value="Nee">Nee</option><option value="Ja">Ja</option></select></label>
                <label class="choice-row"><span>Ventilatie</span><select name="ventilation"><option value="Nee">Nee</option><option value="Ja">Ja</option></select></label>
              </div>
+             <div id="step5-component-host" class="component-layout-host"></div>
              <div class="panel-footer">
               <button id="step5-back-btn" class="back-btn">Vorige</button>
               <button id="step5-next-btn" class="next-btn">Volgende</button>
@@ -148,11 +191,63 @@
                <label class="io-row"><span>Safe DO-kaarten</span><input type="number" name="safeDo" min="0" value="0"></label>
                <label class="io-row"><span>Safe AI-kaarten</span><input type="number" name="safeAi" min="0" value="0"></label>
              </div>
+             <div id="step6-component-host" class="component-layout-host"></div>
              <div class="panel-footer">
               <button id="step6-back-btn" class="back-btn">Vorige</button>
               <button id="step6-next-btn" class="next-btn">Afronden</button>
              </div>
            </section>
+
+           <div class="component-layout">
+             <div id="front-view-2d" class="front-view-2d" aria-label="2D overzicht">
+               <div class="front-view-toolbar">
+                 <div class="zoom-controls" aria-label="Zoom">
+                   <button class="zoom-btn zoom-out" type="button" aria-label="Uitzoomen"><span>-</span></button>
+                   <button class="zoom-btn zoom-in" type="button" aria-label="Inzoomen"><span>+</span></button>
+                 </div>
+                 <button id="add-component-btn" class="add-component-btn" type="button" aria-label="Component toevoegen" title="Component toevoegen"><span>+</span></button>
+                 <button id="delete-component-btn" class="delete-component-btn" type="button" aria-label="Geselecteerd component verwijderen" title="Geselecteerd component verwijderen" disabled>&times;</button>
+               </div>
+               <div class="component-layer" id="component-layer"></div>
+               <div class="door-panel" id="door-panel"></div>
+             </div>
+             <div class="component-selection-summary">
+               <span class="selected-component-name" id="selected-component-name">Geen onderdeel</span>
+               <div class="door-buttons" aria-label="Deur kiezen">
+                 <button id="doorLeft-btn" class="model-btn-door" type="button" data-door="door1.gltf">Deur links</button>
+                 <button id="doorRight-btn" class="model-btn-door" type="button" data-door="door2.gltf">Deur rechts</button>
+               </div>
+             </div>
+           </div>
+           <div id="component-menu" class="component-menu" hidden>
+             <div class="component-group">
+               <button class="component-group-btn" type="button">Schakelkast <span class="chevron">›</span></button>
+               <div class="component-submenu" hidden>
+                 <button class="component-option" type="button" data-component="hoofdschakelaar">Hoofdschakelaar</button>
+                 <button class="component-option" type="button" data-component="zekering">Zekering</button>
+                 <button class="component-option" type="button" data-component="drukschakelaar">Drukschakelaar</button>
+                 <button class="component-option" type="button" data-component="signaallampje">Signaallampje</button>
+               </div>
+             </div>
+             <div class="component-group" data-step4-only>
+               <button class="component-group-btn" type="button">Wartels <span class="chevron">›</span></button>
+               <div class="component-submenu" hidden><button class="component-option" type="button" data-component="wartel">Wartel</button></div>
+             </div>
+             <div class="component-group" data-side-view-only>
+               <button class="component-group-btn" type="button">Zijkant <span class="chevron">›</span></button>
+               <div class="component-submenu" hidden>
+                 <button class="component-option" type="button" data-component="verwarming">Verwarming</button>
+                 <button class="component-option" type="button" data-component="ventilatie">Ventilatie</button>
+               </div>
+             </div>
+             <div class="component-group" data-mounting-plate-only>
+               <button class="component-group-btn" type="button">Montageplaat <span class="chevron">›</span></button>
+               <div class="component-submenu" hidden>
+                 <button class="component-option" type="button" data-component="din-rail">DIN-rail</button>
+                 <button class="component-option" type="button" data-component="kabelgoot">Kabelgoot</button>
+               </div>
+             </div>
+           </div>
           </aside>
           
           <div 
@@ -165,6 +260,7 @@
                 <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
               </label>
           </div>
+        </div>
         </div>
 
       </main>
