@@ -148,12 +148,25 @@ sideLight.position.set(0, 6, 0);
 scene.add(sideLight);
 
 const loader = new GLTFLoader();
+const modelCache = new Map<string, Promise<THREE.Object3D>>();
 let currentModel: THREE.Object3D | null = null;
 let currentMontageModel: THREE.Object3D | null = null;
 let automaticClampGroup: THREE.Group | null = null;
 let automaticBreakerGroup: THREE.Group | null = null;
 let automaticClampLoadToken = 0;
 let currentTimeout: number | null = null;
+
+function loadCachedModel(filename: string): Promise<THREE.Object3D> {
+  const url = `${import.meta.env.BASE_URL}${filename}`;
+  const cached = modelCache.get(url);
+  if (cached) return cached.then((model) => model.clone(true));
+
+  const loadPromise = new Promise<THREE.Object3D>((resolve, reject) => {
+    loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
+  });
+  modelCache.set(url, loadPromise);
+  return loadPromise.then((model) => model.clone(true));
+}
 
 const montageMeshNames = [
   'EMC_RAIL_LEFT',
@@ -283,28 +296,24 @@ function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
   const candidates = [montageFile, montageFile.replace('MontagePlaat.gltf', 'montageplaat.gltf')];
   const tryLoad = (candidateIndex: number) => {
     const candidate = candidates[candidateIndex];
-    loader.load(
-      `${import.meta.env.BASE_URL}${candidate}`,
-      (gltf) => {
+    loadCachedModel(candidate).then(
+      (montageModel) => {
         if (currentModel !== cabinetModel) return;
 
-        const montageModel = gltf.scene;
         montageModel.name = 'MONTAGEPLATE_MODEL';
         cabinetModel.add(montageModel);
         alignMontageToCabinet(cabinetModel, montageModel);
         currentMontageModel = montageModel;
         updateMontageMeshVisibility();
         syncAutomaticClamps();
-      },
-      undefined,
-      (err) => {
+      }
+    ).catch((err) => {
         if (candidateIndex + 1 < candidates.length) {
           tryLoad(candidateIndex + 1);
         } else {
           console.error(`Failed to load montage model (${candidates.join(', ')}):`, err);
         }
-      }
-    );
+      });
   };
 
   tryLoad(0);
@@ -437,9 +446,7 @@ function syncAutomaticClamps() {
   currentModel.add(breakerGroup);
   automaticBreakerGroup = breakerGroup;
 
-  const loadComponent = (file: string) => new Promise<THREE.Object3D>((resolve, reject) => {
-    loader.load(`${import.meta.env.BASE_URL}${file}`, (gltf) => resolve(gltf.scene), undefined, reject);
-  });
+  const loadComponent = (file: string) => loadCachedModel(file);
 
   const getRightSideX = (component: THREE.Object3D) => {
     currentModel!.updateMatrixWorld(true);
@@ -536,26 +543,6 @@ function syncAutomaticClamps() {
   })().catch((err) => console.error('Failed to load automatic DIN rail components:', err));
 }
 
-function disposeModel(obj: THREE.Object3D) {
-  obj.traverse((o) => {
-    if (!(o as any).isMesh) return;
-    const mesh = o as THREE.Mesh;
-    if (mesh.geometry) {
-      try { mesh.geometry.dispose(); } catch (e) { /* ignore */ }
-    }
-    if (Array.isArray(mesh.material)) {
-      mesh.material.forEach((m: any) => {
-        if (m.map) { try { m.map.dispose(); } catch {} }
-        if (m.dispose) try { m.dispose(); } catch {}
-      });
-    } else if (mesh.material) {
-      const m: any = mesh.material;
-      if (m.map) { try { m.map.dispose(); } catch {} }
-      if (m.dispose) try { m.dispose(); } catch {}
-    }
-  });
-}
-
 function setStatus(text: string, isError = false) {
   if (!status) return;
   status.textContent = text;
@@ -572,33 +559,27 @@ function loadModelFile(filename: string) {
 
   setStatus('Loading 3D model...');
 
-  const url = `${import.meta.env.BASE_URL}${filename}`;
   currentTimeout = window.setTimeout(() => {
     setStatus('Still loading 3D model...', true);
   }, 10000);
 
-  loader.load(
-    url,
-    (gltf) => {
+  loadCachedModel(filename).then(
+    (model) => {
       if (currentTimeout) { window.clearTimeout(currentTimeout); currentTimeout = null; }
 
       // remove prior model
       if (currentModel) {
         scene.remove(currentModel);
-        disposeModel(currentModel);
         currentModel = null;
       }
       currentMontageModel = null;
       automaticClampGroup = null;
       automaticBreakerGroup = null;
 
-      const model = gltf.scene;
-
       model.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
         const meshMaterial = object.material;
         const materials = Array.isArray(meshMaterial) ? meshMaterial : [meshMaterial];
-
         materials.forEach((material: any) => {
           if (!material || !('color' in material)) return;
           const color = material.color as THREE.Color;
@@ -635,18 +616,12 @@ function loadModelFile(filename: string) {
 
       // hide status
       if (status && status.parentElement) status.remove();
-    },
-    (progress) => {
-      if (progress.total > 0) {
-        setStatus(`Loading 3D model... ${Math.round((progress.loaded / progress.total) * 100)}%`);
-      }
-    },
-    (err) => {
+    }
+  ).catch((err) => {
       if (currentTimeout) { window.clearTimeout(currentTimeout); currentTimeout = null; }
       console.error('Failed to load 3D model:', err);
       setStatus('Could not load the 3D model.', true);
-    }
-  );
+    });
 }
 
 type ConfiguratorStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -1280,18 +1255,12 @@ function addComponentToScene(
   };
 
   if (item.file) {
-    const url = `${import.meta.env.BASE_URL}${item.file}`;
-    loader.load(
-      url,
-      (gltf) => {
-        const model = gltf.scene;
+    loadCachedModel(item.file).then(
+      (model) => {
         attachMesh(model);
-      },
-      undefined,
-      () => {
+      }).catch(() => {
         attachMesh(createFallbackComponentMesh());
-      }
-    );
+      });
   } else {
     attachMesh(createFallbackComponentMesh());
   }
