@@ -156,16 +156,20 @@ let automaticBreakerGroup: THREE.Group | null = null;
 let automaticClampLoadToken = 0;
 let currentTimeout: number | null = null;
 
-function loadCachedModel(filename: string): Promise<THREE.Object3D> {
+function loadModelResource(filename: string): Promise<THREE.Object3D> {
   const url = `${import.meta.env.BASE_URL}${filename}`;
   const cached = modelCache.get(url);
-  if (cached) return cached.then((model) => model.clone(true));
+  if (cached) return cached;
 
   const loadPromise = new Promise<THREE.Object3D>((resolve, reject) => {
     loader.load(url, (gltf) => resolve(gltf.scene), undefined, reject);
   });
   modelCache.set(url, loadPromise);
-  return loadPromise.then((model) => model.clone(true));
+  return loadPromise;
+}
+
+function loadCachedModel(filename: string): Promise<THREE.Object3D> {
+  return loadModelResource(filename).then((model) => model.clone(true));
 }
 
 const montageMeshNames = [
@@ -432,6 +436,27 @@ function syncAutomaticClamps() {
   const hasPowerSupply = Boolean(configuratorState.powerSupply);
   if ((!count && !hasAutomaticBreaker && !has24VBreaker && !hasPowerSupply)
     || !currentModel || !currentMontageModel) return;
+
+  const modelsToPrefetch = new Set<string>();
+  if (count) {
+    modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
+    modelsToPrefetch.add('Componenten/Klemmen/A2C2.5/component.gltf');
+  }
+  if (hasAutomaticBreaker) {
+    modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
+    modelsToPrefetch.add(
+      `Componenten/Installatieautomaten/230V/${configuratorState.breakerBrand!.toUpperCase()}/component.gltf`
+    );
+  }
+  if (hasPowerSupply) {
+    modelsToPrefetch.add(`Componenten/Voedingen/${configuratorState.powerSupply}/component.gltf`);
+  }
+  if (has24VBreaker) {
+    modelsToPrefetch.add('Componenten/Installatieautomaten/24V/component.gltf');
+    modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
+  }
+  void Promise.all([...modelsToPrefetch].map((file) => loadModelResource(file)))
+    .catch((err) => console.error('Failed to prefetch automatic DIN rail components:', err));
 
   const loadToken = automaticClampLoadToken;
   if (count) {
@@ -1571,7 +1596,6 @@ function animate() {
   requestAnimationFrame(animate);
   controls.update();
   renderer.render(scene, camera);
-  updateFrontPreview();
 }
 
 
