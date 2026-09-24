@@ -153,6 +153,7 @@ let currentModel: THREE.Object3D | null = null;
 let currentMontageModel: THREE.Object3D | null = null;
 let automaticClampGroup: THREE.Group | null = null;
 let automaticBreakerGroup: THREE.Group | null = null;
+let automaticIoGroup: THREE.Group | null = null;
 let automaticClampLoadToken = 0;
 let currentTimeout: number | null = null;
 
@@ -293,6 +294,55 @@ function alignMontageToCabinet(cabinetModel: THREE.Object3D, montageModel: THREE
   }
 }
 
+function alignComponentToMountingPoint(
+  component: THREE.Object3D,
+  componentPointName: string,
+  target: THREE.Object3D,
+  targetPointName: string,
+) {
+  const componentPoint = component.getObjectByName(componentPointName);
+  const targetPoint = target.getObjectByName(targetPointName);
+  const leftSide = component.getObjectByName('LEFT_SIDE');
+  const rightSide = component.getObjectByName('RIGHT_SIDE');
+  if (!componentPoint || !targetPoint || !leftSide || !rightSide) return false;
+
+  component.updateMatrixWorld(true);
+  target.updateMatrixWorld(true);
+  const targetFrame = getMountingFrame(targetPoint);
+  const pointFrame = getMountingFrame(componentPoint);
+  const currentWorldQuaternion = new THREE.Quaternion();
+  const parentWorldQuaternion = new THREE.Quaternion();
+  component.getWorldQuaternion(currentWorldQuaternion);
+  component.parent?.getWorldQuaternion(parentWorldQuaternion);
+
+  const normalRotation = new THREE.Quaternion().setFromUnitVectors(
+    pointFrame.normal,
+    targetFrame.normal,
+  );
+  const rotatedHorizontal = pointFrame.horizontal.clone().applyQuaternion(normalRotation);
+  const horizontalRotation = new THREE.Quaternion().setFromUnitVectors(
+    rotatedHorizontal,
+    targetFrame.horizontal,
+  );
+  const alignmentRotation = horizontalRotation.multiply(normalRotation);
+  const desiredWorldQuaternion = alignmentRotation.multiply(currentWorldQuaternion);
+  component.quaternion.copy(parentWorldQuaternion.invert().multiply(desiredWorldQuaternion));
+  component.updateMatrixWorld(true);
+
+  const alignedPointPosition = new THREE.Vector3();
+  componentPoint.getWorldPosition(alignedPointPosition);
+  const parent = component.parent;
+  const targetPosition = targetFrame.origin.clone();
+  const targetLocalPosition = parent
+    ? parent.worldToLocal(targetPosition)
+    : targetPosition;
+  const pointLocalPosition = parent
+    ? parent.worldToLocal(alignedPointPosition.clone())
+    : alignedPointPosition;
+  component.position.add(targetLocalPosition.sub(pointLocalPosition));
+  return true;
+}
+
 function loadMontageFile(cabinetModel: THREE.Object3D, cabinetFile: string) {
   const montageFile = cabinetFile.replace(/(^|\/)kast\.gltf$/i, '$1MontagePlaat.gltf');
   if (montageFile === cabinetFile) return;
@@ -333,8 +383,10 @@ function clearAutomaticComponents() {
   automaticClampLoadToken += 1;
   if (automaticClampGroup?.parent) automaticClampGroup.parent.remove(automaticClampGroup);
   if (automaticBreakerGroup?.parent) automaticBreakerGroup.parent.remove(automaticBreakerGroup);
+  if (automaticIoGroup?.parent) automaticIoGroup.parent.remove(automaticIoGroup);
   automaticClampGroup = null;
   automaticBreakerGroup = null;
+  automaticIoGroup = null;
 }
 
 function alignComponentToDinRail(
@@ -428,13 +480,18 @@ function alignComponentToDinRail(
 }
 
 function syncAutomaticClamps() {
+  updateMontageMeshVisibility();
   clearAutomaticComponents();
   const count = getAutomaticClampCount();
   const hasAutomaticBreaker = Boolean(configuratorState.voltage && configuratorState.voltage !== '24 VDC'
     && configuratorState.breakerBrand);
   const has24VBreaker = Boolean(configuratorState.voltage);
   const hasPowerSupply = Boolean(configuratorState.powerSupply);
-  if ((!count && !hasAutomaticBreaker && !has24VBreaker && !hasPowerSupply)
+  const ioCardEntries = Object.entries(configuratorState.ioCards)
+    .filter(([, count]) => count > 0);
+  const hasIoCards = ioCardEntries.length > 0;
+  const breakerVoltageFolder = configuratorState.voltage === '400 VAC' ? '400V' : '230V';
+  if ((!count && !hasAutomaticBreaker && !has24VBreaker && !hasPowerSupply && !hasIoCards)
     || !currentModel || !currentMontageModel) return;
 
   const modelsToPrefetch = new Set<string>();
@@ -445,7 +502,7 @@ function syncAutomaticClamps() {
   if (hasAutomaticBreaker) {
     modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
     modelsToPrefetch.add(
-      `Componenten/Installatieautomaten/230V/${configuratorState.breakerBrand!.toUpperCase()}/component.gltf`
+      `Componenten/Installatieautomaten/${breakerVoltageFolder}/${configuratorState.breakerBrand!.toUpperCase()}/component.gltf`
     );
   }
   if (hasPowerSupply) {
@@ -454,6 +511,17 @@ function syncAutomaticClamps() {
   if (has24VBreaker) {
     modelsToPrefetch.add('Componenten/Installatieautomaten/24V/component.gltf');
     modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
+  }
+  if (hasIoCards) {
+    modelsToPrefetch.add('Componenten/IO_units/BaseUnit_Start/component.gltf');
+    modelsToPrefetch.add('Componenten/IO_units/BaseUnit_Continue/component.gltf');
+    ioCardEntries.forEach(([cardName]) => {
+      const modelName = cardName === 'safeDi' ? 'Safe_DI-kaart'
+        : cardName === 'safeDo' ? 'Safe_DO-kaart'
+          : cardName === 'safeAi' ? 'Safe_AI-kaart'
+            : `${cardName.toUpperCase()}-kaart`;
+      modelsToPrefetch.add(`Componenten/IO_units/${modelName}/component.gltf`);
+    });
   }
   void Promise.all([...modelsToPrefetch].map((file) => loadModelResource(file)))
     .catch((err) => console.error('Failed to prefetch automatic DIN rail components:', err));
@@ -470,6 +538,11 @@ function syncAutomaticClamps() {
   breakerGroup.name = 'AUTOMATIC_BREAKER';
   currentModel.add(breakerGroup);
   automaticBreakerGroup = breakerGroup;
+
+  const ioGroup = new THREE.Group();
+  ioGroup.name = 'AUTOMATIC_IO_UNITS';
+  currentModel.add(ioGroup);
+  automaticIoGroup = ioGroup;
 
   const loadComponent = (file: string) => loadCachedModel(file);
 
@@ -533,7 +606,7 @@ function syncAutomaticClamps() {
       );
       const breakerBrand = configuratorState.breakerBrand!.toUpperCase();
       contactX = await loadDocked(
-        `Componenten/Installatieautomaten/230V/${breakerBrand}/component.gltf`,
+        `Componenten/Installatieautomaten/${breakerVoltageFolder}/${breakerBrand}/component.gltf`,
         `INSTALLATIEAUTOMAAT-${breakerBrand}`,
         contactX,
       );
@@ -558,11 +631,76 @@ function syncAutomaticClamps() {
         'INSTALLATIEAUTOMAAT-24V',
         contactX,
       );
-      await loadDocked(
+      contactX = await loadDocked(
         `Componenten/Klemmen/AEB35SC1/component.gltf`,
         'AEB35SC1-24V-rechts',
         contactX,
       );
+    }
+
+    if (hasIoCards && automaticIoGroup) {
+      const rail = currentMontageModel?.getObjectByName('DIN-RAIL_1');
+      const railEndX = rail ? new THREE.Box3().setFromObject(rail).max.x : Number.POSITIVE_INFINITY;
+      let ioContactX = contactX;
+      let placedCards = 0;
+      const ioCardModels: Record<string, string> = {
+        di: 'DI-kaart',
+        do: 'DO-kaart',
+        ai: 'AI-kaart',
+        ao: 'AO-kaart',
+        safeDi: 'Safe_DI-kaart',
+        safeDo: 'Safe_DO-kaart',
+        safeAi: 'Safe_AI-kaart',
+      };
+      let railFull = false;
+
+      for (const [cardName, requestedCount] of ioCardEntries) {
+        if (railFull) {
+          const input = document.querySelector<HTMLInputElement>(`.io-row input[name="${cardName}"]`);
+          if (input) input.value = '0';
+          configuratorState.ioCards[cardName] = 0;
+          continue;
+        }
+        const cardFile = `Componenten/IO_units/${ioCardModels[cardName]}/component.gltf`;
+        let placedForCard = 0;
+        for (let index = 0; index < requestedCount; index += 1) {
+          const baseFile = placedCards === 0
+            ? 'Componenten/IO_units/BaseUnit_Start/component.gltf'
+            : 'Componenten/IO_units/BaseUnit_Continue/component.gltf';
+          const base = await loadComponent(baseFile);
+          if (loadToken !== automaticClampLoadToken || automaticIoGroup !== ioGroup) return;
+          automaticIoGroup.add(base);
+          const baseWidth = alignComponentToDinRail(
+            base,
+            0,
+            1,
+            automaticIoGroup,
+            ioContactX,
+          );
+          const baseRightX = getRightSideX(base);
+          if (baseWidth === undefined || baseRightX === undefined || baseRightX > railEndX) {
+            automaticIoGroup.remove(base);
+            const input = document.querySelector<HTMLInputElement>(`.io-row input[name="${cardName}"]`);
+            if (input) input.value = String(placedForCard);
+            configuratorState.ioCards[cardName] = placedForCard;
+            railFull = true;
+            break;
+          }
+
+          const card = await loadComponent(cardFile);
+          if (loadToken !== automaticClampLoadToken || automaticIoGroup !== ioGroup) return;
+          card.name = `${cardName.toUpperCase()}-${index + 1}`;
+          automaticIoGroup.add(card);
+          if (!alignComponentToMountingPoint(card, 'MOUNTING_POINT', base, 'MOUNTING_POINT_IO')) {
+            automaticIoGroup.remove(card);
+            automaticIoGroup.remove(base);
+            break;
+          }
+          ioContactX = baseRightX;
+          placedCards += 1;
+          placedForCard += 1;
+        }
+      }
     }
     updateFrontPreview();
   })().catch((err) => console.error('Failed to load automatic DIN rail components:', err));
@@ -1388,7 +1526,7 @@ document.querySelectorAll<HTMLSelectElement>('select[name]').forEach((select) =>
 document.querySelectorAll<HTMLInputElement>('.io-row input[type="number"]').forEach((input) => {
   input.addEventListener('input', () => {
     configuratorState.ioCards[input.name] = Math.max(0, Number.parseInt(input.value, 10) || 0);
-    updateMontageMeshVisibility();
+    syncAutomaticClamps();
   });
 });
 
