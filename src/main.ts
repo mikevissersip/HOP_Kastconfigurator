@@ -25,13 +25,13 @@ const breakerCodesByVoltage = {
   '400 VAC': { Siemens: '5SL4608-7CC', Eaton: 'FAZ-C83N', ABB: 'S203M-C8NA' },
 } as const;
 const breakerBrands = [
-  { name: 'Siemens', logo: '/images/Siemens-Logo.png' },
-  { name: 'Eaton', logo: '/images/Eaton-Logo.png' },
-  { name: 'ABB', logo: '/images/ABB-Logo.png' },
+  { name: 'Siemens', logo: `${import.meta.env.BASE_URL}images/Siemens-Logo.png` },
+  { name: 'Eaton', logo: `${import.meta.env.BASE_URL}images/Eaton-Logo.png` },
+  { name: 'ABB', logo: `${import.meta.env.BASE_URL}images/ABB-Logo.png` },
 ] as const;
 const powerSupplyLogos: Record<string, string> = {
-  Weidmuller: '/images/Weidmuller_Logo.png',
-  'Phoenix Contact': '/images/Phoenix_Logo.png',
+  Weidmuller: `${import.meta.env.BASE_URL}images/Weidmuller_Logo.png`,
+  'Phoenix Contact': `${import.meta.env.BASE_URL}images/Phoenix_Logo.png`,
 };
 
 function getProductModelFile(code: string) {
