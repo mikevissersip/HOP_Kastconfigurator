@@ -138,16 +138,25 @@ const landingPage = document.getElementById('landing-page');
 const configuratorContent = document.getElementById('configurator-content');
 const startConfiguratorBtn = document.getElementById('start-configurator-btn');
 const backToLandingBtn = document.getElementById('back-to-landing-btn');
+const headerHomeLink = document.getElementById('header-home-link');
 
 function setConfiguratorVisible(visible: boolean) {
   if (landingPage) landingPage.hidden = visible;
   if (configuratorContent) configuratorContent.hidden = !visible;
+  if (!visible) {
+    const orderPage = document.getElementById('order-page');
+    if (orderPage) orderPage.hidden = true;
+  }
   if (visible) window.dispatchEvent(new Event('resize'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 startConfiguratorBtn?.addEventListener('click', () => setConfiguratorVisible(true));
 backToLandingBtn?.addEventListener('click', () => setConfiguratorVisible(false));
+headerHomeLink?.addEventListener('click', (event) => {
+  event.preventDefault();
+  setConfiguratorVisible(false);
+});
 
 const frontView2d = document.getElementById('front-view-2d') as HTMLDivElement | null;
 const frontViewCanvas = document.createElement('canvas');
