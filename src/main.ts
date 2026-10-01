@@ -1961,8 +1961,10 @@ function renderOrderSummary() {
   const fragment = document.createDocumentFragment();
 
   cartItems.forEach((item) => {
-    const row = document.createElement('tr');
-    const productCell = document.createElement('td');
+    const row = document.createElement('article');
+    row.className = 'cart-item';
+    row.setAttribute('role', 'listitem');
+    const productCell = document.createElement('div');
     productCell.className = 'cart-product-cell';
     const name = document.createElement('strong');
     name.textContent = item.name;
@@ -1979,14 +1981,17 @@ function renderOrderSummary() {
       productCell.appendChild(details);
     }
 
-    const quantityCell = document.createElement('td');
+    const quantityCell = document.createElement('div');
     quantityCell.className = 'cart-number-cell';
+    quantityCell.dataset.label = 'Aantal';
     quantityCell.textContent = String(item.quantity);
-    const unitPriceCell = document.createElement('td');
+    const unitPriceCell = document.createElement('div');
     unitPriceCell.className = 'cart-number-cell';
+    unitPriceCell.dataset.label = 'Prijs/stuk';
     unitPriceCell.textContent = item.unitPrice === null ? 'Op aanvraag' : estimateCurrency.format(item.unitPrice);
-    const subtotalCell = document.createElement('td');
+    const subtotalCell = document.createElement('div');
     subtotalCell.className = 'cart-number-cell cart-line-total';
+    subtotalCell.dataset.label = 'Subtotaal';
     subtotalCell.textContent = item.unitPrice === null
       ? 'Op aanvraag'
       : estimateCurrency.format(item.unitPrice * item.quantity);

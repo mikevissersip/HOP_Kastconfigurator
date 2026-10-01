@@ -284,18 +284,14 @@
                 <h2 id="cart-items-title">Artikelen</h2>
                 <span id="cart-item-count" class="cart-item-count"></span>
               </header>
-              <div class="cart-table-wrap">
-                <table class="cart-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Product</th>
-                      <th scope="col">Aantal</th>
-                      <th scope="col">Prijs/stuk</th>
-                      <th scope="col">Subtotaal</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cart-items"></tbody>
-                </table>
+              <div class="cart-list">
+                <div class="cart-list-header" aria-hidden="true">
+                  <span>Product</span>
+                  <span>Aantal</span>
+                  <span>Prijs/stuk</span>
+                  <span>Subtotaal</span>
+                </div>
+                <div id="cart-items" class="cart-list-items" role="list" aria-label="Artikelen in de winkelwagen"></div>
               </div>
             </section>
             <aside class="cart-summary" aria-labelledby="cart-summary-title">
