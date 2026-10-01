@@ -42,7 +42,13 @@ a {
 
 .page-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--page-bg);
+}
+
+main {
+  flex: 1;
 }
 
 [hidden] {
