@@ -263,6 +263,30 @@
         </div>
         </div>
 
+        <section id="order-page" class="order-page" aria-labelledby="order-title" hidden>
+          <button id="order-back-btn" class="back-to-landing" type="button">&#8592; Terug naar configuratie</button>
+          <header class="order-heading">
+            <p class="landing-eyebrow">CONFIGURATIE VOLTOOID</p>
+            <h1 id="order-title" tabindex="-1">Vraag je schakelkast aan</h1>
+            <p>Controleer je configuratie en vul je contactgegevens in. Je e-mailprogramma opent met de aanvraag, zodat je deze zelf kunt versturen.</p>
+          </header>
+          <div class="order-layout">
+            <section class="order-panel" aria-labelledby="order-summary-title">
+              <h2 id="order-summary-title">Configuratieoverzicht</h2>
+              <dl id="order-summary" class="order-summary" aria-live="polite"></dl>
+            </section>
+            <form id="order-form" class="order-panel order-form">
+              <h2>Je gegevens</h2>
+              <label>Naam <span aria-hidden="true">*</span><input name="contactName" autocomplete="name" required></label>
+              <label>Bedrijf<input name="company" autocomplete="organization"></label>
+              <label>E-mailadres <span aria-hidden="true">*</span><input name="contactEmail" type="email" autocomplete="email" required></label>
+              <label>Telefoonnummer<input name="telephone" type="tel" autocomplete="tel"></label>
+              <label>Opmerking<textarea name="notes" rows="4"></textarea></label>
+              <button class="next-btn order-submit" type="submit">Verstuur aanvraag per e-mail</button>
+            </form>
+          </div>
+        </section>
+
       </main>
 
       <footer class="site-footer">

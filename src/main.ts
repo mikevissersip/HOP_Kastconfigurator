@@ -1583,6 +1583,11 @@ const step5BackBtn = document.getElementById('step5-back-btn') as HTMLButtonElem
 const step5NextBtn = document.getElementById('step5-next-btn') as HTMLButtonElement | null;
 const step6BackBtn = document.getElementById('step6-back-btn') as HTMLButtonElement | null;
 const step6NextBtn = document.getElementById('step6-next-btn') as HTMLButtonElement | null;
+const orderPage = document.getElementById('order-page');
+const orderSummary = document.getElementById('order-summary');
+const orderForm = document.getElementById('order-form') as HTMLFormElement | null;
+const orderBackBtn = document.getElementById('order-back-btn') as HTMLButtonElement | null;
+const orderTitle = document.getElementById('order-title') as HTMLHeadingElement | null;
 
 function setNextButtonState(button: HTMLButtonElement | null, enabled: boolean) {
   if (!button) return;
@@ -1609,6 +1614,103 @@ if (step5BackBtn) step5BackBtn.addEventListener('click', () => {
 });
 if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
 if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
+
+function getOrderSummaryItems(): Array<[string, string]> {
+  const items: Array<[string, string]> = [
+    ['Kastbehuizing', configuratorState.selectedCabinet?.name || 'Niet gekozen'],
+  ];
+  if (configuratorState.selectedDoor) items.push(['Deur', configuratorState.selectedDoor.name]);
+  if (configuratorState.voltage) items.push(['Spanning', configuratorState.voltage]);
+  if (configuratorState.breakerBrand) items.push(['Installatieautomaat', configuratorState.breakerBrand]);
+  if (configuratorState.powerSupply) items.push(['Voeding', configuratorState.powerSupply]);
+
+  const featureLabels: Record<keyof ConfiguratorState['features'], string> = {
+    lighting: 'Verlichting',
+    heating: 'Verwarming',
+    ventilation: 'Ventilatie',
+  };
+  Object.entries(configuratorState.features).forEach(([key, value]) => {
+    items.push([featureLabels[key as keyof ConfiguratorState['features']], value]);
+  });
+
+  const cardLabels: Record<string, string> = {
+    di: 'DI-kaarten',
+    do: 'DO-kaarten',
+    ai: 'AI-kaarten',
+    ao: 'AO-kaarten',
+    safeDi: 'Safe DI-kaarten',
+    safeDo: 'Safe DO-kaarten',
+    safeAi: 'Safe AI-kaarten',
+  };
+  const selectedCards = Object.entries(configuratorState.ioCards)
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => `${cardLabels[name] || name}: ${count}`);
+  items.push(['IO-kaarten', selectedCards.join(', ') || 'Geen']);
+
+  const componentCounts = new Map<string, number>();
+  getAllMountedComponents().forEach((component) => {
+    componentCounts.set(component.name, (componentCounts.get(component.name) || 0) + 1);
+  });
+  if (componentCounts.size > 0) {
+    items.push(['Extra componenten', [...componentCounts].map(([name, count]) => `${name}: ${count}`).join(', ')]);
+  }
+
+  return items;
+}
+
+function renderOrderSummary() {
+  if (!orderSummary) return;
+  const fragment = document.createDocumentFragment();
+  getOrderSummaryItems().forEach(([label, value]) => {
+    const row = document.createElement('div');
+    row.className = 'order-summary-row';
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const description = document.createElement('dd');
+    description.textContent = value;
+    row.append(term, description);
+    fragment.appendChild(row);
+  });
+  orderSummary.replaceChildren(fragment);
+}
+
+step6NextBtn?.addEventListener('click', () => {
+  renderOrderSummary();
+  if (configuratorContent) configuratorContent.hidden = true;
+  if (orderPage) orderPage.hidden = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  orderTitle?.focus();
+});
+
+orderBackBtn?.addEventListener('click', () => {
+  if (orderPage) orderPage.hidden = true;
+  if (configuratorContent) configuratorContent.hidden = false;
+  window.dispatchEvent(new Event('resize'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  step6NextBtn?.focus();
+});
+
+orderForm?.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const formData = new FormData(orderForm);
+  const fieldValue = (name: string) => String(formData.get(name) || '').trim();
+  const body = [
+    'Aanvraag schakelkastconfiguratie',
+    '',
+    ...getOrderSummaryItems().map(([label, value]) => `${label}: ${value}`),
+    '',
+    'Contactgegevens',
+    `Naam: ${fieldValue('contactName')}`,
+    `Bedrijf: ${fieldValue('company') || 'Niet opgegeven'}`,
+    `E-mailadres: ${fieldValue('contactEmail')}`,
+    `Telefoonnummer: ${fieldValue('telephone') || 'Niet opgegeven'}`,
+    '',
+    'Opmerking:',
+    fieldValue('notes') || 'Geen',
+  ].join('\n');
+  const subject = encodeURIComponent('Aanvraag schakelkastconfiguratie');
+  window.location.href = `mailto:veenendaal@hoppenbrouwers.nl?subject=${subject}&body=${encodeURIComponent(body)}`;
+});
 
 updateNextButtonStates();
 
