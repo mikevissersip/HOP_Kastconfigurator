@@ -486,7 +486,7 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
   flex-direction: column;
 }
 
@@ -499,7 +499,7 @@ main {
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  height: 640px;
+  height: auto;
 
   box-sizing: border-box;
 }
@@ -1093,6 +1093,65 @@ main {
 .next-btn:active,
 .next-btn:focus {
   outline: 2px solid rgba(15,45,76,0.12);
+}
+
+.viewer-column {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.price-indicator {
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 8px 22px rgba(17, 42, 71, 0.04);
+}
+
+.price-indicator h2 {
+  margin: 0 0 14px;
+  color: var(--nav-blue);
+  font-size: 1rem;
+}
+
+.estimate-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.estimate-values > div {
+  display: grid;
+  gap: 5px;
+}
+
+.estimate-values > div + div {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+.estimate-values span {
+  color: #667887;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.estimate-values strong {
+  color: var(--nav-blue);
+  font-size: 1.15rem;
+}
+
+.estimate-note {
+  margin: 14px 0 0;
+  color: #496176;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.estimate-note.is-incomplete {
+  color: #8a4a16;
 }
 
 .viewer-stage {

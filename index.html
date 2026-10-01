@@ -250,15 +250,31 @@
            </div>
           </aside>
           
-          <div 
-              id="viewer-stage"
-              class="viewer-stage"
-              aria-label="3D cabinet preview">
-              <label class="rotation-toggle" for="auto-rotate-toggle">
-                <span>Automatisch draaien</span>
-                <input id="auto-rotate-toggle" type="checkbox" checked />
-                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
-              </label>
+          <div class="viewer-column">
+            <div 
+                id="viewer-stage"
+                class="viewer-stage"
+                aria-label="3D cabinet preview">
+                <label class="rotation-toggle" for="auto-rotate-toggle">
+                  <span>Automatisch draaien</span>
+                  <input id="auto-rotate-toggle" type="checkbox" checked />
+                  <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                </label>
+            </div>
+            <section class="price-indicator" aria-labelledby="price-indicator-title" aria-live="polite">
+              <h2 id="price-indicator-title">Prijs- en levertijdindicatie</h2>
+              <div class="estimate-values">
+                <div>
+                  <span>Materialen, excl. btw</span>
+                  <strong id="price-estimate">Wordt berekend</strong>
+                </div>
+                <div>
+                  <span>Langste bekende levertijd</span>
+                  <strong id="delivery-estimate">Wordt berekend</strong>
+                </div>
+              </div>
+              <p id="price-estimate-note" class="estimate-note"></p>
+            </section>
           </div>
         </div>
         </div>

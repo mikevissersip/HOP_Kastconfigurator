@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cabinetCatalog } from './cabinetCatalog';
+import { priceCatalog } from './priceCatalog';
 
 const stage = document.getElementById('viewer-stage');
 if (!stage) throw new Error('Viewer stage not found');
@@ -495,6 +496,7 @@ function alignComponentToDinRail(
 }
 
 function syncAutomaticClamps() {
+  updatePriceEstimate();
   updateMontageMeshVisibility();
   clearAutomaticComponents();
   const count = getAutomaticClampCount();
@@ -697,6 +699,7 @@ function syncAutomaticClamps() {
             const input = document.querySelector<HTMLInputElement>(`.io-row input[name="${cardName}"]`);
             if (input) input.value = String(placedForCard);
             configuratorState.ioCards[cardName] = placedForCard;
+            updatePriceEstimate();
             railFull = true;
             break;
           }
@@ -1030,6 +1033,91 @@ function getAllMountedComponents() {
   ];
 }
 
+const priceEstimateEl = document.getElementById('price-estimate');
+const deliveryEstimateEl = document.getElementById('delivery-estimate');
+const priceEstimateNoteEl = document.getElementById('price-estimate-note');
+const priceCatalogByName = new Map(priceCatalog.map((entry) => [entry.name.toLowerCase(), entry]));
+const estimateCurrency = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+
+function updatePriceEstimate() {
+  if (!priceEstimateEl || !deliveryEstimateEl || !priceEstimateNoteEl) return;
+
+  const requestedItems = new Map<string, number>();
+  const missingItems = new Set<string>();
+  const addItem = (name: string, quantity = 1) => {
+    if (quantity > 0) requestedItems.set(name, (requestedItems.get(name) || 0) + quantity);
+  };
+
+  if (configuratorState.selectedCabinet) addItem(configuratorState.selectedCabinet.name);
+
+  const voltageCode = configuratorState.voltage === '400 VAC' ? '400V' : '230V';
+  if (configuratorState.voltage && configuratorState.voltage !== '24 VDC' && configuratorState.breakerBrand) {
+    addItem(`${configuratorState.breakerBrand.toUpperCase()} ${voltageCode}`);
+    addItem('AEB35SC1', 2);
+  }
+  if (configuratorState.voltage) {
+    addItem('24V automaat');
+    addItem('AEB35SC1');
+  }
+  if (configuratorState.voltage === '230 VAC' || configuratorState.voltage === '400 VAC') {
+    addItem('AEB35SC1', 2);
+    addItem('A2C2.5', getAutomaticClampCount());
+  }
+  if (configuratorState.powerSupply) addItem(`${configuratorState.powerSupply} Voeding`);
+
+  const ioCardLabels: Record<string, string> = {
+    di: 'DI',
+    do: 'DO',
+    ai: 'AI',
+    ao: 'AO',
+    safeDi: 'Safe DI',
+    safeDo: 'Safe DO',
+    safeAi: 'Safe AI',
+  };
+  Object.entries(configuratorState.ioCards).forEach(([cardName, count]) => {
+    if (count <= 0) return;
+    const label = ioCardLabels[cardName];
+    if (!label) {
+      missingItems.add(cardName);
+      return;
+    }
+    addItem(label, count);
+    addItem('Baseunit Start');
+    addItem('BaseUnit Continue', count - 1);
+  });
+
+  const featureLabels: Record<keyof ConfiguratorState['features'], string> = {
+    lighting: 'Verlichting',
+    heating: 'Verwarming',
+    ventilation: 'Ventilatie',
+  };
+  Object.entries(configuratorState.features).forEach(([feature, value]) => {
+    if (value === 'Ja') missingItems.add(featureLabels[feature as keyof ConfiguratorState['features']]);
+  });
+  getAllMountedComponents().forEach((component) => missingItems.add(component.name));
+
+  let totalPrice = 0;
+  let longestDelivery = 0;
+  let pricedItems = 0;
+  requestedItems.forEach((quantity, name) => {
+    const entry = priceCatalogByName.get(name.toLowerCase());
+    if (!entry) {
+      missingItems.add(name);
+      return;
+    }
+    totalPrice += entry.price * quantity;
+    longestDelivery = Math.max(longestDelivery, entry.deliveryDays);
+    pricedItems += quantity;
+  });
+
+  priceEstimateEl.textContent = pricedItems > 0 ? estimateCurrency.format(totalPrice) : 'Nog niet bekend';
+  deliveryEstimateEl.textContent = pricedItems > 0 ? `${longestDelivery} dagen` : 'Nog niet bekend';
+  priceEstimateNoteEl.classList.toggle('is-incomplete', missingItems.size > 0);
+  priceEstimateNoteEl.textContent = missingItems.size > 0
+    ? `Onvolledige indicatie: geen prijsgegevens voor ${[...missingItems].join(', ')}. Het bedrag en de levertijd tonen alleen onderdelen met een regel in de prijslijst.`
+    : 'Indicatie op basis van de prijslijst; exclusief montage, engineering en verzending. Levertijd is de langste levertijd van de geselecteerde onderdelen.';
+}
+
 function getSelectedNameEl() {
   if (configuratorState.currentStep === 4) return selectedGlandNameEl;
   if (configuratorState.currentStep === 5) return selectedSideLeftNameEl;
@@ -1257,6 +1345,7 @@ function clearMountedComponents() {
   if (deleteComponentBtn) deleteComponentBtn.disabled = true;
   if (selectedComponentNameEl) selectedComponentNameEl.textContent = 'Geen onderdeel';
   if (selectedGlandNameEl) selectedGlandNameEl.textContent = 'Geen wartel';
+  updatePriceEstimate();
 }
 
 function selectComponent(component: MountedComponent) {
@@ -1282,6 +1371,7 @@ function deleteSelectedComponent() {
   const selectedName = getSelectedNameEl();
   if (selectedName) selectedName.textContent = configuratorState.currentStep === 4 ? 'Geen wartel' : 'Geen onderdeel';
   updateFrontPreview();
+  updatePriceEstimate();
 }
 
 function convert2DTo3D(x: number, y: number, depthOffset = 0) {
@@ -1416,6 +1506,7 @@ function addComponentToScene(
   };
 
   getMountedComponents().push(component);
+  updatePriceEstimate();
   createComponentMarker(item, component);
   syncComponentPosition(component);
   selectComponent(component);
@@ -1463,6 +1554,7 @@ function createCabinetButtons() {
       configuratorState.selectedCabinet = cabinet;
       setActiveButton(button);
       updateNextButtonStates();
+      updatePriceEstimate();
     });
     cabinetList.appendChild(button);
 
@@ -1470,6 +1562,7 @@ function createCabinetButtons() {
       button.classList.add('active');
       configuratorState.selectedCabinet = cabinet;
       updateNextButtonStates();
+      updatePriceEstimate();
     }
   });
 }
@@ -1534,6 +1627,7 @@ document.querySelectorAll<HTMLSelectElement>('select[name]').forEach((select) =>
   select.addEventListener('change', () => {
     const feature = select.name as keyof ConfiguratorState['features'];
     configuratorState.features[feature] = select.value as 'Ja' | 'Nee';
+    updatePriceEstimate();
   });
 });
 
@@ -1823,6 +1917,7 @@ const initialFile = initialCabinet?.modelFile || 'kast.gltf';
 loadModelFile(initialFile);
 if (cabinetList?.firstElementChild) setActiveButton(cabinetList.firstElementChild);
 showStep(1);
+updatePriceEstimate();
 
 if (rightDoor) {
   setActiveDoorButton(rightDoor);
