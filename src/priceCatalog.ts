@@ -12,37 +12,37 @@ export const priceCatalog: PriceCatalogEntry[] = [
   },
   {
     "code": "5SL4208-7",
-    "price": null,
+    "price": 90,
     "deliveryDays": null
   },
   {
     "code": "5SL4608-7CC",
-    "price": null,
+    "price": 90,
     "deliveryDays": 15
   },
   {
     "code": "FAZ-C82",
-    "price": null,
+    "price": 90,
     "deliveryDays": null
   },
   {
     "code": "FAZ-C83N",
-    "price": null,
+    "price": 90,
     "deliveryDays": null
   },
   {
     "code": "S202M-C8",
-    "price": null,
+    "price": 90,
     "deliveryDays": null
   },
   {
     "code": "S203M-C8NA",
-    "price": null,
+    "price": 90,
     "deliveryDays": null
   },
   {
     "code": "CBME824DC0.5-10ANO-R",
-    "price": null,
+    "price": 90,
     "deliveryDays": null
   },
   {
@@ -92,12 +92,12 @@ export const priceCatalog: PriceCatalogEntry[] = [
   },
   {
     "code": "A2C2.5",
-    "price": null,
+    "price": 1,
     "deliveryDays": 0
   },
   {
     "code": "AEB35SC1",
-    "price": null,
+    "price": 1,
     "deliveryDays": null
   },
   {

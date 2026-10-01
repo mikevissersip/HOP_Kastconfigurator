@@ -29,7 +29,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Siemens",
     "name": "5SL4208-7",
     "modelFile": "Onderdelen/5SL4208-7/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": null,
     "properties": {
       "Spanning (V)": 230,
@@ -43,7 +43,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Siemens",
     "name": "5SL4608-7CC",
     "modelFile": "Onderdelen/5SL4608-7CC/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": 15,
     "properties": {
       "Spanning (V)": 400,
@@ -57,7 +57,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Eaton",
     "name": "FAZ-C82",
     "modelFile": "Onderdelen/FAZ-C82/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": null,
     "properties": {
       "Spanning (V)": 415,
@@ -71,7 +71,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Eaton",
     "name": "FAZ-C83N",
     "modelFile": "Onderdelen/FAZ-C83N/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": null,
     "properties": {
       "Spanning (V)": 400,
@@ -85,7 +85,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "ABB",
     "name": "S202M-C8",
     "modelFile": "Onderdelen/S202M-C8/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": null,
     "properties": {
       "Spanning (V)": 400,
@@ -99,7 +99,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "ABB",
     "name": "S203M-C8NA",
     "modelFile": "Onderdelen/S203M-C8NA/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": null,
     "properties": {
       "Spanning (V)": 400,
@@ -113,7 +113,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Phoenix Contact",
     "name": "CBME824DC0.5-10ANO-R",
     "modelFile": "Onderdelen/CBME824DC0.5-10ANO-R/component.gltf",
-    "price": null,
+    "price": 90,
     "deliveryDays": null,
     "properties": {
       "Spanning (V)": 24,
@@ -280,7 +280,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Weidmuller",
     "name": "A2C2.5",
     "modelFile": "Onderdelen/A2C2.5/component.gltf",
-    "price": null,
+    "price": 1,
     "deliveryDays": 0,
     "properties": {}
   },
@@ -290,7 +290,7 @@ export const componentCatalog: ComponentCatalogEntry[] = [
     "brand": "Weidmuller",
     "name": "AEB35SC1",
     "modelFile": "Onderdelen/AEB35SC1/component.gltf",
-    "price": null,
+    "price": 1,
     "deliveryDays": null,
     "properties": {}
   },
