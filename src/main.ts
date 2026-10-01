@@ -657,7 +657,6 @@ function syncAutomaticClamps() {
       const rail = currentMontageModel?.getObjectByName('DIN-RAIL_1');
       const railEndX = rail ? new THREE.Box3().setFromObject(rail).max.x : Number.POSITIVE_INFINITY;
       let ioContactX = contactX;
-      let placedCards = 0;
       const ioCardModels: Record<string, string> = {
         di: 'DI-kaart',
         do: 'DO-kaart',
@@ -679,7 +678,7 @@ function syncAutomaticClamps() {
         const cardFile = `Componenten/IO_units/${ioCardModels[cardName]}/component.gltf`;
         let placedForCard = 0;
         for (let index = 0; index < requestedCount; index += 1) {
-          const baseFile = placedCards === 0
+          const baseFile = index === 0
             ? 'Componenten/IO_units/BaseUnit_Start/component.gltf'
             : 'Componenten/IO_units/BaseUnit_Continue/component.gltf';
           const base = await loadComponent(baseFile);
@@ -712,7 +711,6 @@ function syncAutomaticClamps() {
             break;
           }
           ioContactX = baseRightX;
-          placedCards += 1;
           placedForCard += 1;
         }
       }
