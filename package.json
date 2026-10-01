@@ -3,11 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "generate:cabinets": "node scripts/generate-cabinet-catalog.mjs",
-    "generate:prices": "node scripts/generate-price-catalog.mjs",
-    "predev": "npm run generate:cabinets && npm run generate:prices",
+    "generate:components": "node scripts/generate-component-catalog.mjs",
+    "predev": "npm run generate:components",
     "dev": "vite",
-    "prebuild": "npm run generate:cabinets && npm run generate:prices",
+    "prebuild": "npm run generate:components",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -705,6 +705,32 @@ main {
   object-fit: contain;
 }
 
+.breaker-choice-details {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+}
+
+.breaker-choice-details small {
+  color: #667887;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.brand-choice .product-choice-copy {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  text-align: center;
+}
+
+.brand-choice .product-choice-copy small {
+  color: #667887;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .brand-choice:has(input:checked) {
   border-color: var(--HOP-orange);
   background: #fff5f1;
@@ -1497,6 +1523,22 @@ main {
     font-weight: 700;
     font-size: 0.6rem;
     
+  }
+
+  #power-supply-choice-list .brand-choice {
+    min-height: 150px;
+    padding: 12px 6px;
+    gap: 8px;
+    font-size: 0.75rem;
+  }
+
+  #power-supply-choice-list .brand-choice img {
+    width: min(100%, 130px);
+    height: 62px;
+  }
+
+  #power-supply-choice-list .product-choice-copy small {
+    font-size: 0.62rem;
   }
   
   

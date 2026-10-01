@@ -1,103 +1,113 @@
 export interface PriceCatalogEntry {
-  name: string;
-  price: number;
-  deliveryDays: number;
+  code: string;
+  price: number | null;
+  deliveryDays: number | null;
 }
 
 export const priceCatalog: PriceCatalogEntry[] = [
   {
-    "name": "AX1009000",
+    "code": "AX1009000",
     "price": 476.5,
-    "deliveryDays": 21
-  },
-  {
-    "name": "Siemens 230V",
-    "price": 100,
-    "deliveryDays": 3
-  },
-  {
-    "name": "Siemens 400V",
-    "price": 100,
-    "deliveryDays": 6
-  },
-  {
-    "name": "EATON 230V",
-    "price": 34,
-    "deliveryDays": 3
-  },
-  {
-    "name": "EATON 400V",
-    "price": 45,
-    "deliveryDays": 4
-  },
-  {
-    "name": "24V automaat",
-    "price": 50,
-    "deliveryDays": 2
-  },
-  {
-    "name": "AI",
-    "price": 48,
-    "deliveryDays": 2
-  },
-  {
-    "name": "AO",
-    "price": 34,
-    "deliveryDays": 2
-  },
-  {
-    "name": "BaseUnit Continue",
-    "price": 34,
-    "deliveryDays": 1
-  },
-  {
-    "name": "Baseunit Start",
-    "price": 32,
-    "deliveryDays": 1
-  },
-  {
-    "name": "DI",
-    "price": 67,
-    "deliveryDays": 1
-  },
-  {
-    "name": "DO",
-    "price": 49,
-    "deliveryDays": 11
-  },
-  {
-    "name": "Safe AI",
-    "price": 96,
-    "deliveryDays": 1
-  },
-  {
-    "name": "Safe DI",
-    "price": 48,
-    "deliveryDays": 1
-  },
-  {
-    "name": "Safe DO",
-    "price": 75,
-    "deliveryDays": 1
-  },
-  {
-    "name": "A2C2.5",
-    "price": 2,
-    "deliveryDays": 1
-  },
-  {
-    "name": "AEB35SC1",
-    "price": 3,
-    "deliveryDays": 1
-  },
-  {
-    "name": "Phoenix Voeding",
-    "price": 135,
     "deliveryDays": 5
   },
   {
-    "name": "Weidmuller Voeding",
-    "price": 245,
+    "code": "5SL4208-7",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "5SL4608-7CC",
+    "price": null,
+    "deliveryDays": 15
+  },
+  {
+    "code": "FAZ-C82",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "FAZ-C83N",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "S202M-C8",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "S203M-C8NA",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "CBME824DC0.5-10ANO-R",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "6ES7131-6BF00-0CA0",
+    "price": 75.99,
+    "deliveryDays": 3
+  },
+  {
+    "code": "6ES7132-6BD20-0BA0",
+    "price": 74,
+    "deliveryDays": 1
+  },
+  {
+    "code": "6ES7134-6FB00-0BA1",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "6ES7135-6FB00-0BA1",
+    "price": 180.77,
+    "deliveryDays": 1
+  },
+  {
+    "code": "6ES7136-6AA00-0CA1",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "6ES7136-6BA01-0CA0",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "6ES7136-6DB01-0CA0",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "6ES7193-6BP20-0BA0",
+    "price": 22.2,
+    "deliveryDays": 1
+  },
+  {
+    "code": "6ES7193-6BP20-0DA0",
+    "price": 34.89,
+    "deliveryDays": 1
+  },
+  {
+    "code": "A2C2.5",
+    "price": null,
+    "deliveryDays": 0
+  },
+  {
+    "code": "AEB35SC1",
+    "price": null,
+    "deliveryDays": null
+  },
+  {
+    "code": "PROTOP1480W24V20A",
+    "price": 400.99,
     "deliveryDays": 5
+  },
+  {
+    "code": "QUINT4-PS1AC24DC20",
+    "price": null,
+    "deliveryDays": null
   }
 ];

@@ -54,10 +54,9 @@
           <div class="landing-inner">
             <div class="landing-copy">
               <p class="landing-eyebrow">HOPPENBROUWERS · SCHAKELKASTCONFIGURATOR</p>
-              <h1 id="landing-title">Ontwerp jouw schakelkast.</h1>
+              <h1 id="landing-title">Ontwerp jouw remote I/O kast.</h1>
               <p class="landing-intro">
-                Stel stap voor stap een passende schakelkast samen. Kies de behuizing,
-                spanning en componenten en bekijk direct het resultaat in 3D.
+                Stel stap voor stap een passende remote I/O schakelkast samen. Volledig afgestemd op de specifieke behoeften van jouw installatie. 
               </p>
               <div class="landing-actions">
                 <button id="start-configurator-btn" class="landing-cta" type="button">
@@ -120,9 +119,9 @@
             >
                 <h2 class="panel-title">Kies de binnenkomende spanning van de kast</h2>
                 <div class="choice-list voltage-choice-list" role="radiogroup" aria-label="Binnenkomende spanning">
-                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="230 VAC"> <img src="/images/230VAC.png" alt=""><span>230 VAC</span></label>
-                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="400 VAC"> <img src="/images/400VAC.png" alt=""><span>400 VAC</span></label>
-                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="24 VDC"> <img src="/images/24V.png" alt=""><span>24 VDC</span></label>
+                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="230 VAC"><img src="/images/230VAC.png" alt=""><span>230 VAC</span></label>
+                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="400 VAC"><img src="/images/400VAC.png" alt=""><span>400 VAC</span></label>
+                  <label class="choice-option voltage-choice"><input type="radio" name="voltage" value="24 VDC"><img src="/images/24V.png" alt=""><span>24 VDC</span></label>
                 </div>
               <div class="panel-footer">
                 <button id="back-btn" class="back-btn">Vorige</button>
@@ -137,10 +136,7 @@
              hidden
            >
              <h2 class="panel-title">Kies het merk van de installatieautomaat</h2>
-             <div class="choice-list brand-choice-list" role="radiogroup" aria-label="Merk installatieautomaat">
-               <label class="choice-option brand-choice"><input type="radio" name="breakerBrand" value="Eaton"> <img src="/images/Eaton-Logo.png" alt="Eaton"><span>Eaton installatieautomaat</span></label>
-               <label class="choice-option brand-choice"><input type="radio" name="breakerBrand" value="Siemens"> <img src="/images/Siemens-Logo.png" alt="Siemens"><span>Siemens installatieautomaat</span></label>
-               <label class="choice-option brand-choice"><input type="radio" name="breakerBrand" value="ABB"> <img src="/images/ABB-Logo.png" alt="ABB"><span>ABB installatieautomaat</span></label>
+             <div id="breaker-choice-list" class="choice-list brand-choice-list" role="radiogroup" aria-label="Merk installatieautomaat">
              </div>
              <div class="panel-footer">
               <button id="step3-back-btn" class="back-btn">Vorige</button>
@@ -155,9 +151,7 @@
              hidden
            >
              <h2 class="panel-title">Kies de voeding</h2>
-             <div class="choice-list brand-choice-list" role="radiogroup" aria-label="Voeding">
-               <label class="choice-option brand-choice"><input type="radio" name="powerSupply" value="Weidmuller"> <img src="/images/Weidmuller_Logo.png" alt="Weidmuller"><span>Weidmuller voeding</span></label>
-               <label class="choice-option brand-choice"><input type="radio" name="powerSupply" value="Phoenix"> <img src="/images/Phoenix_Logo.png" alt="Phoenix"><span>Phoenix voeding</span></label>
+             <div id="power-supply-choice-list" class="choice-list brand-choice-list" role="radiogroup" aria-label="Voeding">
              </div>
              <div id="step4-component-host" class="component-layout-host"></div>
              <div class="panel-footer">

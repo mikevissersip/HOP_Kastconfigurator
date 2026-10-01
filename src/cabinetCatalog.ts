@@ -8,6 +8,6 @@ export const cabinetCatalog: CabinetCatalogItem[] = [
   {
     "id": "AX1009000",
     "name": "AX1009000",
-    "modelFile": "Kasten/AX1009000/kast.gltf"
+    "modelFile": "Onderdelen/AX1009000/kast.gltf"
   }
 ];

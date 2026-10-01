@@ -2,7 +2,134 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { cabinetCatalog } from './cabinetCatalog';
+import { componentCatalog as productCatalog } from './componentCatalog';
 import { priceCatalog } from './priceCatalog';
+
+const productByCode = new Map(productCatalog.map((product) => [product.code, product]));
+const ioCardCodes: Record<string, string> = {
+  di: '6ES7131-6BF00-0CA0',
+  do: '6ES7132-6BD20-0BA0',
+  ai: '6ES7134-6FB00-0BA1',
+  ao: '6ES7135-6FB00-0BA1',
+  safeAi: '6ES7136-6AA00-0CA1',
+  safeDi: '6ES7136-6BA01-0CA0',
+  safeDo: '6ES7136-6DB01-0CA0',
+};
+const startBaseUnitCode = '6ES7193-6BP20-0DA0';
+const continueBaseUnitCode = '6ES7193-6BP20-0BA0';
+const twentyFourVoltBreakerCode = 'CBME824DC0.5-10ANO-R';
+const clampCode = 'AEB35SC1';
+const powerClampCode = 'A2C2.5';
+const breakerCodesByVoltage = {
+  '230 VAC': { Siemens: '5SL4208-7', Eaton: 'FAZ-C82', ABB: 'S202M-C8' },
+  '400 VAC': { Siemens: '5SL4608-7CC', Eaton: 'FAZ-C83N', ABB: 'S203M-C8NA' },
+} as const;
+const breakerBrands = [
+  { name: 'Siemens', logo: '/images/Siemens-Logo.png' },
+  { name: 'Eaton', logo: '/images/Eaton-Logo.png' },
+  { name: 'ABB', logo: '/images/ABB-Logo.png' },
+] as const;
+const powerSupplyLogos: Record<string, string> = {
+  Weidmuller: '/images/Weidmuller_Logo.png',
+  'Phoenix Contact': '/images/Phoenix_Logo.png',
+};
+
+function getProductModelFile(code: string) {
+  return productByCode.get(code)?.modelFile || `Onderdelen/${code}/component.gltf`;
+}
+
+function getSelectedBreakerCode() {
+  const voltage = configuratorState.voltage;
+  const brand = configuratorState.breakerBrand;
+  if (!voltage || voltage === '24 VDC' || !brand) return null;
+  return breakerCodesByVoltage[voltage][brand];
+}
+
+function populateBreakerChoices() {
+  const container = document.getElementById('breaker-choice-list');
+  const voltage = configuratorState.voltage;
+  if (!container || !voltage || voltage === '24 VDC') return;
+
+  const fragment = document.createDocumentFragment();
+  breakerBrands.forEach(({ name, logo }) => {
+    const code = breakerCodesByVoltage[voltage][name];
+    const product = productByCode.get(code);
+    const label = document.createElement('label');
+    label.className = 'choice-option brand-choice';
+
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'breakerBrand';
+    input.value = name;
+    input.checked = configuratorState.breakerBrand === name;
+
+    const image = document.createElement('img');
+    image.src = logo;
+    image.alt = '';
+
+    const brandName = document.createElement('span');
+    brandName.textContent = name;
+    const articleCode = document.createElement('small');
+    articleCode.textContent = product ? product.code : code;
+
+    const details = document.createElement('span');
+    details.className = 'breaker-choice-details';
+    details.append(brandName, articleCode);
+    label.append(input, image, details);
+    fragment.appendChild(label);
+  });
+  container.replaceChildren(fragment);
+}
+
+function populateProductChoices(
+  containerId: string,
+  inputName: string,
+  category: string,
+  excludedCodes: string[] = [],
+  logosByBrand: Record<string, string> = {},
+) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const excluded = new Set(excludedCodes);
+  const fragment = document.createDocumentFragment();
+  productCatalog.filter((product) => product.category === category && !excluded.has(product.code)).forEach((product) => {
+    const logo = product.brand ? logosByBrand[product.brand] : undefined;
+    const label = document.createElement('label');
+    label.className = logo ? 'choice-option brand-choice' : 'choice-option product-choice';
+
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = inputName;
+    input.value = product.code;
+
+    const copy = document.createElement('span');
+    copy.className = 'product-choice-copy';
+    const title = document.createElement('strong');
+    title.textContent = `${product.brand ? `${product.brand} - ` : ''}${product.code}`;
+    copy.appendChild(title);
+
+    const specifications = Object.entries(product.properties)
+      .map(([name, value]) => `${name}: ${value}`)
+      .join('; ');
+    if (specifications) {
+      const details = document.createElement('small');
+      details.textContent = specifications;
+      copy.appendChild(details);
+    }
+
+    if (logo) {
+      const image = document.createElement('img');
+      image.src = logo;
+      image.alt = '';
+      label.append(input, image, copy);
+    } else {
+      label.append(input, copy);
+    }
+    fragment.appendChild(label);
+  });
+  container.replaceChildren(fragment);
+}
 
 const stage = document.getElementById('viewer-stage');
 if (!stage) throw new Error('Viewer stage not found');
@@ -500,44 +627,39 @@ function syncAutomaticClamps() {
   updateMontageMeshVisibility();
   clearAutomaticComponents();
   const count = getAutomaticClampCount();
+  const breakerCode = getSelectedBreakerCode();
   const hasAutomaticBreaker = Boolean(configuratorState.voltage && configuratorState.voltage !== '24 VDC'
-    && configuratorState.breakerBrand);
+    && breakerCode);
   const has24VBreaker = Boolean(configuratorState.voltage);
   const hasPowerSupply = Boolean(configuratorState.powerSupply);
   const ioCardEntries = Object.entries(configuratorState.ioCards)
     .filter(([, count]) => count > 0);
   const hasIoCards = ioCardEntries.length > 0;
-  const breakerVoltageFolder = configuratorState.voltage === '400 VAC' ? '400V' : '230V';
   if ((!count && !hasAutomaticBreaker && !has24VBreaker && !hasPowerSupply && !hasIoCards)
     || !currentModel || !currentMontageModel) return;
 
   const modelsToPrefetch = new Set<string>();
   if (count) {
-    modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
-    modelsToPrefetch.add('Componenten/Klemmen/A2C2.5/component.gltf');
+    modelsToPrefetch.add(getProductModelFile(clampCode));
+    modelsToPrefetch.add(getProductModelFile(powerClampCode));
   }
   if (hasAutomaticBreaker) {
-    modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
-    modelsToPrefetch.add(
-      `Componenten/Installatieautomaten/${breakerVoltageFolder}/${configuratorState.breakerBrand!.toUpperCase()}/component.gltf`
-    );
+    modelsToPrefetch.add(getProductModelFile(clampCode));
+    modelsToPrefetch.add(getProductModelFile(breakerCode!));
   }
   if (hasPowerSupply) {
-    modelsToPrefetch.add(`Componenten/Voedingen/${configuratorState.powerSupply}/component.gltf`);
+    modelsToPrefetch.add(getProductModelFile(configuratorState.powerSupply!));
   }
   if (has24VBreaker) {
-    modelsToPrefetch.add('Componenten/Installatieautomaten/24V/component.gltf');
-    modelsToPrefetch.add('Componenten/Klemmen/AEB35SC1/component.gltf');
+    modelsToPrefetch.add(getProductModelFile(twentyFourVoltBreakerCode));
+    modelsToPrefetch.add(getProductModelFile(clampCode));
   }
   if (hasIoCards) {
-    modelsToPrefetch.add('Componenten/IO_units/BaseUnit_Start/component.gltf');
-    modelsToPrefetch.add('Componenten/IO_units/BaseUnit_Continue/component.gltf');
+    modelsToPrefetch.add(getProductModelFile(startBaseUnitCode));
+    modelsToPrefetch.add(getProductModelFile(continueBaseUnitCode));
     ioCardEntries.forEach(([cardName]) => {
-      const modelName = cardName === 'safeDi' ? 'Safe_DI-kaart'
-        : cardName === 'safeDo' ? 'Safe_DO-kaart'
-          : cardName === 'safeAi' ? 'Safe_AI-kaart'
-            : `${cardName.toUpperCase()}-kaart`;
-      modelsToPrefetch.add(`Componenten/IO_units/${modelName}/component.gltf`);
+      const code = ioCardCodes[cardName];
+      if (code) modelsToPrefetch.add(getProductModelFile(code));
     });
   }
   void Promise.all([...modelsToPrefetch].map((file) => loadModelResource(file)))
@@ -590,13 +712,13 @@ function syncAutomaticClamps() {
   void (async () => {
     if (count && automaticClampGroup) {
       let clampContactX = await loadDocked(
-        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        getProductModelFile(clampCode),
         'AEB35SC1-voedingsklemmen-links',
         undefined,
         automaticClampGroup,
         2,
       );
-      const clampModel = await loadComponent('Componenten/Klemmen/A2C2.5/component.gltf');
+      const clampModel = await loadComponent(getProductModelFile(powerClampCode));
       if (loadToken === automaticClampLoadToken && automaticClampGroup) {
         for (let index = 0; index < count; index += 1) {
           const clamp = clampModel.clone(true);
@@ -606,7 +728,7 @@ function syncAutomaticClamps() {
           clampContactX = getRightSideX(clamp);
         }
         await loadDocked(
-          `Componenten/Klemmen/AEB35SC1/component.gltf`,
+          getProductModelFile(clampCode),
           'AEB35SC1-voedingsklemmen-rechts',
           clampContactX,
           automaticClampGroup,
@@ -618,17 +740,16 @@ function syncAutomaticClamps() {
     let contactX: number | undefined;
     if (hasAutomaticBreaker) {
       contactX = await loadDocked(
-        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        getProductModelFile(clampCode),
         'AEB35SC1-automaat-links',
       );
-      const breakerBrand = configuratorState.breakerBrand!.toUpperCase();
       contactX = await loadDocked(
-        `Componenten/Installatieautomaten/${breakerVoltageFolder}/${breakerBrand}/component.gltf`,
-        `INSTALLATIEAUTOMAAT-${breakerBrand}`,
+        getProductModelFile(breakerCode!),
+        `INSTALLATIEAUTOMAAT-${breakerCode}`,
         contactX,
       );
       contactX = await loadDocked(
-        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        getProductModelFile(clampCode),
         'AEB35SC1-automaat-rechts',
         contactX,
       );
@@ -636,7 +757,7 @@ function syncAutomaticClamps() {
 
     if (hasPowerSupply) {
       contactX = await loadDocked(
-        `Componenten/Voedingen/${configuratorState.powerSupply}/component.gltf`,
+        getProductModelFile(configuratorState.powerSupply!),
         `VOEDING-${configuratorState.powerSupply}`,
         contactX,
       );
@@ -644,12 +765,12 @@ function syncAutomaticClamps() {
 
     if (has24VBreaker) {
       contactX = await loadDocked(
-        `Componenten/Installatieautomaten/24V/component.gltf`,
-        'INSTALLATIEAUTOMAAT-24V',
+        getProductModelFile(twentyFourVoltBreakerCode),
+        `INSTALLATIEAUTOMAAT-${twentyFourVoltBreakerCode}`,
         contactX,
       );
       contactX = await loadDocked(
-        `Componenten/Klemmen/AEB35SC1/component.gltf`,
+        getProductModelFile(clampCode),
         'AEB35SC1-24V-rechts',
         contactX,
       );
@@ -659,15 +780,6 @@ function syncAutomaticClamps() {
       const rail = currentMontageModel?.getObjectByName('DIN-RAIL_1');
       const railEndX = rail ? new THREE.Box3().setFromObject(rail).max.x : Number.POSITIVE_INFINITY;
       let ioContactX = contactX;
-      const ioCardModels: Record<string, string> = {
-        di: 'DI-kaart',
-        do: 'DO-kaart',
-        ai: 'AI-kaart',
-        ao: 'AO-kaart',
-        safeDi: 'Safe_DI-kaart',
-        safeDo: 'Safe_DO-kaart',
-        safeAi: 'Safe_AI-kaart',
-      };
       let railFull = false;
 
       for (const [cardName, requestedCount] of ioCardEntries) {
@@ -677,12 +789,12 @@ function syncAutomaticClamps() {
           configuratorState.ioCards[cardName] = 0;
           continue;
         }
-        const cardFile = `Componenten/IO_units/${ioCardModels[cardName]}/component.gltf`;
+        const cardFile = getProductModelFile(ioCardCodes[cardName]);
         let placedForCard = 0;
         for (let index = 0; index < requestedCount; index += 1) {
           const baseFile = index === 0
-            ? 'Componenten/IO_units/BaseUnit_Start/component.gltf'
-            : 'Componenten/IO_units/BaseUnit_Continue/component.gltf';
+            ? getProductModelFile(startBaseUnitCode)
+            : getProductModelFile(continueBaseUnitCode);
           const base = await loadComponent(baseFile);
           if (loadToken !== automaticClampLoadToken || automaticIoGroup !== ioGroup) return;
           automaticIoGroup.add(base);
@@ -851,8 +963,8 @@ interface ConfiguratorState {
   selectedCabinet: SelectedCabinet | null;
   selectedDoor: SelectedDoor | null;
   voltage: '230 VAC' | '400 VAC' | '24 VDC' | null;
-  breakerBrand: 'Eaton' | 'Siemens' | 'ABB' | null;
-  powerSupply: 'Weidmuller' | 'Phoenix' | null;
+  breakerBrand: 'Siemens' | 'Eaton' | 'ABB' | null;
+  powerSupply: string | null;
   features: {
     lighting: 'Ja' | 'Nee';
     heating: 'Ja' | 'Nee';
@@ -1033,58 +1145,50 @@ function getAllMountedComponents() {
   ];
 }
 
+function getConfiguredItemQuantities() {
+  const requestedItems = new Map<string, number>();
+  const addItem = (code: string, quantity = 1) => {
+    if (quantity > 0) requestedItems.set(code, (requestedItems.get(code) || 0) + quantity);
+  };
+
+  if (configuratorState.selectedCabinet) addItem(configuratorState.selectedCabinet.id);
+  const breakerCode = getSelectedBreakerCode();
+  if (breakerCode) {
+    addItem(breakerCode);
+    addItem(clampCode, 2);
+  }
+  if (configuratorState.voltage) {
+    addItem(twentyFourVoltBreakerCode);
+    addItem(clampCode);
+  }
+  if (configuratorState.voltage === '230 VAC' || configuratorState.voltage === '400 VAC') {
+    addItem(clampCode, 2);
+    addItem(powerClampCode, getAutomaticClampCount());
+  }
+  if (configuratorState.powerSupply) addItem(configuratorState.powerSupply);
+
+  Object.entries(configuratorState.ioCards).forEach(([cardName, count]) => {
+    const code = ioCardCodes[cardName];
+    if (count <= 0 || !code) return;
+    addItem(code, count);
+    addItem(startBaseUnitCode);
+    addItem(continueBaseUnitCode, count - 1);
+  });
+
+  return requestedItems;
+}
+
 const priceEstimateEl = document.getElementById('price-estimate');
 const deliveryEstimateEl = document.getElementById('delivery-estimate');
 const priceEstimateNoteEl = document.getElementById('price-estimate-note');
-const priceCatalogByName = new Map(priceCatalog.map((entry) => [entry.name.toLowerCase(), entry]));
+const priceCatalogByCode = new Map(priceCatalog.map((entry) => [entry.code, entry]));
 const estimateCurrency = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
 
 function updatePriceEstimate() {
   if (!priceEstimateEl || !deliveryEstimateEl || !priceEstimateNoteEl) return;
 
-  const requestedItems = new Map<string, number>();
+  const requestedItems = getConfiguredItemQuantities();
   const missingItems = new Set<string>();
-  const addItem = (name: string, quantity = 1) => {
-    if (quantity > 0) requestedItems.set(name, (requestedItems.get(name) || 0) + quantity);
-  };
-
-  if (configuratorState.selectedCabinet) addItem(configuratorState.selectedCabinet.name);
-
-  const voltageCode = configuratorState.voltage === '400 VAC' ? '400V' : '230V';
-  if (configuratorState.voltage && configuratorState.voltage !== '24 VDC' && configuratorState.breakerBrand) {
-    addItem(`${configuratorState.breakerBrand.toUpperCase()} ${voltageCode}`);
-    addItem('AEB35SC1', 2);
-  }
-  if (configuratorState.voltage) {
-    addItem('24V automaat');
-    addItem('AEB35SC1');
-  }
-  if (configuratorState.voltage === '230 VAC' || configuratorState.voltage === '400 VAC') {
-    addItem('AEB35SC1', 2);
-    addItem('A2C2.5', getAutomaticClampCount());
-  }
-  if (configuratorState.powerSupply) addItem(`${configuratorState.powerSupply} Voeding`);
-
-  const ioCardLabels: Record<string, string> = {
-    di: 'DI',
-    do: 'DO',
-    ai: 'AI',
-    ao: 'AO',
-    safeDi: 'Safe DI',
-    safeDo: 'Safe DO',
-    safeAi: 'Safe AI',
-  };
-  Object.entries(configuratorState.ioCards).forEach(([cardName, count]) => {
-    if (count <= 0) return;
-    const label = ioCardLabels[cardName];
-    if (!label) {
-      missingItems.add(cardName);
-      return;
-    }
-    addItem(label, count);
-    addItem('Baseunit Start');
-    addItem('BaseUnit Continue', count - 1);
-  });
 
   const featureLabels: Record<keyof ConfiguratorState['features'], string> = {
     lighting: 'Verlichting',
@@ -1099,22 +1203,32 @@ function updatePriceEstimate() {
   let totalPrice = 0;
   let longestDelivery = 0;
   let pricedItems = 0;
-  requestedItems.forEach((quantity, name) => {
-    const entry = priceCatalogByName.get(name.toLowerCase());
+  let hasDeliveryData = false;
+  requestedItems.forEach((quantity, code) => {
+    const entry = priceCatalogByCode.get(code);
     if (!entry) {
-      missingItems.add(name);
+      missingItems.add(code);
       return;
     }
-    totalPrice += entry.price * quantity;
-    longestDelivery = Math.max(longestDelivery, entry.deliveryDays);
-    pricedItems += quantity;
+    if (entry.price === null) {
+      missingItems.add(code);
+    } else {
+      totalPrice += entry.price * quantity;
+      pricedItems += quantity;
+    }
+    if (entry.deliveryDays === null) {
+      missingItems.add(code);
+    } else {
+      longestDelivery = Math.max(longestDelivery, entry.deliveryDays);
+      hasDeliveryData = true;
+    }
   });
 
   priceEstimateEl.textContent = pricedItems > 0 ? estimateCurrency.format(totalPrice) : 'Nog niet bekend';
-  deliveryEstimateEl.textContent = pricedItems > 0 ? `${longestDelivery} dagen` : 'Nog niet bekend';
+  deliveryEstimateEl.textContent = hasDeliveryData ? `${longestDelivery} dagen` : 'Nog niet bekend';
   priceEstimateNoteEl.classList.toggle('is-incomplete', missingItems.size > 0);
   priceEstimateNoteEl.textContent = missingItems.size > 0
-    ? `Onvolledige indicatie: geen prijsgegevens voor ${[...missingItems].join(', ')}. Het bedrag en de levertijd tonen alleen onderdelen met een regel in de prijslijst.`
+    ? `Onvolledige indicatie: ontbrekende prijs- of levertijdgegevens voor ${[...missingItems].join(', ')}. Alleen beschikbare waarden zijn meegenomen.`
     : 'Indicatie op basis van de prijslijst; exclusief montage, engineering en verzending. Levertijd is de langste levertijd van de geselecteerde onderdelen.';
 }
 
@@ -1602,17 +1716,20 @@ if (step1NextBtn) {
 document.querySelectorAll<HTMLInputElement>('input[name="voltage"]').forEach((input) => {
   input.addEventListener('change', () => {
     configuratorState.voltage = input.value as ConfiguratorState['voltage'];
+    populateBreakerChoices();
     updateNextButtonStates();
     syncAutomaticClamps();
   });
 });
 
-document.querySelectorAll<HTMLInputElement>('input[name="breakerBrand"]').forEach((input) => {
-  input.addEventListener('change', () => {
-    configuratorState.breakerBrand = input.value as ConfiguratorState['breakerBrand'];
-    updateNextButtonStates();
-    syncAutomaticClamps();
-  });
+populateProductChoices('power-supply-choice-list', 'powerSupply', 'Voeding', [], powerSupplyLogos);
+
+document.getElementById('breaker-choice-list')?.addEventListener('change', (event) => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || input.name !== 'breakerBrand') return;
+  configuratorState.breakerBrand = input.value as ConfiguratorState['breakerBrand'];
+  updateNextButtonStates();
+  syncAutomaticClamps();
 });
 
 document.querySelectorAll<HTMLInputElement>('input[name="powerSupply"]').forEach((input) => {
@@ -1715,8 +1832,12 @@ function getOrderSummaryItems(): Array<[string, string]> {
   ];
   if (configuratorState.selectedDoor) items.push(['Deur', configuratorState.selectedDoor.name]);
   if (configuratorState.voltage) items.push(['Spanning', configuratorState.voltage]);
-  if (configuratorState.breakerBrand) items.push(['Installatieautomaat', configuratorState.breakerBrand]);
-  if (configuratorState.powerSupply) items.push(['Voeding', configuratorState.powerSupply]);
+
+  const selectedCabinetCode = configuratorState.selectedCabinet?.id;
+  const configuredItems = [...getConfiguredItemQuantities()]
+    .filter(([code]) => code !== selectedCabinetCode)
+    .map(([code, count]) => `${code} x ${count}`);
+  items.push(['Onderdelen (artikelcode x aantal)', configuredItems.join(', ') || 'Geen']);
 
   const featureLabels: Record<keyof ConfiguratorState['features'], string> = {
     lighting: 'Verlichting',
@@ -1726,20 +1847,6 @@ function getOrderSummaryItems(): Array<[string, string]> {
   Object.entries(configuratorState.features).forEach(([key, value]) => {
     items.push([featureLabels[key as keyof ConfiguratorState['features']], value]);
   });
-
-  const cardLabels: Record<string, string> = {
-    di: 'DI-kaarten',
-    do: 'DO-kaarten',
-    ai: 'AI-kaarten',
-    ao: 'AO-kaarten',
-    safeDi: 'Safe DI-kaarten',
-    safeDo: 'Safe DO-kaarten',
-    safeAi: 'Safe AI-kaarten',
-  };
-  const selectedCards = Object.entries(configuratorState.ioCards)
-    .filter(([, count]) => count > 0)
-    .map(([name, count]) => `${cardLabels[name] || name}: ${count}`);
-  items.push(['IO-kaarten', selectedCards.join(', ') || 'Geen']);
 
   const componentCounts = new Map<string, number>();
   getAllMountedComponents().forEach((component) => {
