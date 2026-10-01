@@ -109,5 +109,15 @@ export const priceCatalog: PriceCatalogEntry[] = [
     "code": "QUINT4-PS1AC24DC20",
     "price": null,
     "deliveryDays": null
+  },
+  {
+    "code": "PRODUCTIE-BASE",
+    "price": 500,
+    "deliveryDays": 7
+  },
+  {
+    "code": "PRODUCTIE-PER-COMPONENT",
+    "price": 3,
+    "deliveryDays": null
   }
 ];

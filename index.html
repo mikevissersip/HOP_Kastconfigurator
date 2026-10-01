@@ -273,26 +273,47 @@
         </div>
 
         <section id="order-page" class="order-page" aria-labelledby="order-title" hidden>
-          <button id="order-back-btn" class="back-to-landing" type="button">&#8592; Terug naar configuratie</button>
+          <button id="order-back-btn" class="back-to-landing" type="button">&#8592; Verder configureren</button>
           <header class="order-heading">
-            <p class="landing-eyebrow">CONFIGURATIE VOLTOOID</p>
-            <h1 id="order-title" tabindex="-1">Vraag je schakelkast aan</h1>
-            <p>Controleer je configuratie en vul je contactgegevens in. Je e-mailprogramma opent met de aanvraag, zodat je deze zelf kunt versturen.</p>
+            <p class="landing-eyebrow">JOUW CONFIGURATIE</p>
+            <h1 id="order-title" tabindex="-1">Winkelwagen</h1>
           </header>
-          <div class="order-layout">
-            <section class="order-panel" aria-labelledby="order-summary-title">
-              <h2 id="order-summary-title">Configuratieoverzicht</h2>
-              <dl id="order-summary" class="order-summary" aria-live="polite"></dl>
+          <div class="cart-layout">
+            <section class="cart-panel" aria-labelledby="cart-items-title">
+              <header class="cart-panel-heading">
+                <h2 id="cart-items-title">Artikelen</h2>
+                <span id="cart-item-count" class="cart-item-count"></span>
+              </header>
+              <div class="cart-table-wrap">
+                <table class="cart-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Product</th>
+                      <th scope="col">Aantal</th>
+                      <th scope="col">Prijs/stuk</th>
+                      <th scope="col">Subtotaal</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cart-items"></tbody>
+                </table>
+              </div>
             </section>
-            <form id="order-form" class="order-panel order-form">
-              <h2>Je gegevens</h2>
-              <label>Naam <span aria-hidden="true">*</span><input name="contactName" autocomplete="name" required></label>
-              <label>Bedrijf<input name="company" autocomplete="organization"></label>
-              <label>E-mailadres <span aria-hidden="true">*</span><input name="contactEmail" type="email" autocomplete="email" required></label>
-              <label>Telefoonnummer<input name="telephone" type="tel" autocomplete="tel"></label>
-              <label>Opmerking<textarea name="notes" rows="4"></textarea></label>
-              <button class="next-btn order-submit" type="submit">Verstuur aanvraag per e-mail</button>
-            </form>
+            <aside class="cart-summary" aria-labelledby="cart-summary-title">
+              <h2 id="cart-summary-title">Overzicht</h2>
+              <dl class="cart-details">
+                <div><dt>Kast</dt><dd id="cart-cabinet"></dd></div>
+                <div><dt>Spanning</dt><dd id="cart-voltage"></dd></div>
+                <div><dt>Levertijdindicatie</dt><dd id="cart-delivery"></dd></div>
+              </dl>
+              <div class="cart-total">
+                <span>Totaal bekende artikelen, excl. btw</span>
+                <strong id="cart-total-value"></strong>
+              </div>
+              <p id="cart-price-note" class="cart-price-note"></p>
+              <p class="cart-tax-note">Exclusief btw, montage, engineering en verzending.</p>
+              <button class="next-btn checkout-btn" type="button" disabled>Bestellen</button>
+              <p class="checkout-note">Bestellen is nog niet beschikbaar.</p>
+            </aside>
           </div>
         </section>
 

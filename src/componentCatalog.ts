@@ -321,5 +321,25 @@ export const componentCatalog: ComponentCatalogEntry[] = [
       "Uitgangsspanning (V)": 24,
       "Maximale Stroom (A)": 20
     }
+  },
+  {
+    "code": "PRODUCTIE-BASE",
+    "category": "productie",
+    "brand": "Hoppenbrouwers",
+    "name": "Productie-base",
+    "modelFile": "",
+    "price": 500,
+    "deliveryDays": 7,
+    "properties": {}
+  },
+  {
+    "code": "PRODUCTIE-PER-COMPONENT",
+    "category": "productie",
+    "brand": "Hoppenbrouwers",
+    "name": "Productie per component",
+    "modelFile": "",
+    "price": 3,
+    "deliveryDays": null,
+    "properties": {}
   }
 ];

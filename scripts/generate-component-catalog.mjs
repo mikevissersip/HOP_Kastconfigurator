@@ -115,6 +115,37 @@ for (const component of components) {
   }
 }
 
+const productionEntries = [
+  {
+    code: 'PRODUCTIE-BASE',
+    category: 'productie',
+    brand: 'Hoppenbrouwers',
+    name: 'Productie-base',
+    modelFile: '',
+    price: 500,
+    deliveryDays: 7,
+    properties: {},
+  },
+  {
+    code: 'PRODUCTIE-PER-COMPONENT',
+    category: 'productie',
+    brand: 'Hoppenbrouwers',
+    name: 'Productie per component',
+    modelFile: '',
+    price: 3,
+    deliveryDays: null,
+    properties: {},
+  },
+];
+
+for (const productionEntry of productionEntries) {
+  const normalizedCode = productionEntry.code.toLocaleLowerCase('nl-NL');
+  if (seenCodes.has(normalizedCode)) throw new Error(`Dubbele artikelcode: ${productionEntry.code}.`);
+  seenCodes.add(normalizedCode);
+}
+
+const catalogEntries = [...components, ...productionEntries];
+
 const componentSource = `export interface ComponentCatalogEntry {
   code: string;
   category: string;
@@ -126,7 +157,7 @@ const componentSource = `export interface ComponentCatalogEntry {
   properties: Record<string, string | number>;
 }
 
-export const componentCatalog: ComponentCatalogEntry[] = ${JSON.stringify(components, null, 2)};
+export const componentCatalog: ComponentCatalogEntry[] = ${JSON.stringify(catalogEntries, null, 2)};
 `;
 
 const cabinetEntries = components
@@ -141,7 +172,7 @@ const cabinetSource = `export interface CabinetCatalogItem {
 export const cabinetCatalog: CabinetCatalogItem[] = ${JSON.stringify(cabinetEntries, null, 2)};
 `;
 
-const priceEntries = components.map(({ code, price, deliveryDays }) => ({ code, price, deliveryDays }));
+const priceEntries = catalogEntries.map(({ code, price, deliveryDays }) => ({ code, price, deliveryDays }));
 const priceSource = `export interface PriceCatalogEntry {
   code: string;
   price: number | null;
@@ -157,4 +188,4 @@ await Promise.all([
   writeFile(path.join(outputDirectory, 'priceCatalog.ts'), priceSource, 'utf8'),
 ]);
 
-console.log(`Generated component catalog with ${components.length} item(s).`);
+console.log(`Generated component catalog with ${catalogEntries.length} item(s).`);

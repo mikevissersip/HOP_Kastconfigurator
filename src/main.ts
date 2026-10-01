@@ -20,6 +20,8 @@ const continueBaseUnitCode = '6ES7193-6BP20-0BA0';
 const twentyFourVoltBreakerCode = 'CBME824DC0.5-10ANO-R';
 const clampCode = 'AEB35SC1';
 const powerClampCode = 'A2C2.5';
+const productionBaseCode = 'PRODUCTIE-BASE';
+const productionPerComponentCode = 'PRODUCTIE-PER-COMPONENT';
 const breakerCodesByVoltage = {
   '230 VAC': { Siemens: '5SL4208-7', Eaton: 'FAZ-C82', ABB: 'S202M-C8' },
   '400 VAC': { Siemens: '5SL4608-7CC', Eaton: 'FAZ-C83N', ABB: 'S203M-C8NA' },
@@ -1187,11 +1189,38 @@ function getConfiguredItemQuantities() {
   return requestedItems;
 }
 
+function getProductionComponentCount() {
+  let componentCount = getAllMountedComponents().length;
+  const cabinetCode = configuratorState.selectedCabinet?.id;
+  getConfiguredItemQuantities().forEach((quantity, code) => {
+    if (code !== cabinetCode) componentCount += quantity;
+  });
+  return componentCount;
+}
+
 const priceEstimateEl = document.getElementById('price-estimate');
 const deliveryEstimateEl = document.getElementById('delivery-estimate');
 const priceEstimateNoteEl = document.getElementById('price-estimate-note');
 const priceCatalogByCode = new Map(priceCatalog.map((entry) => [entry.code, entry]));
 const estimateCurrency = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+
+function getProductionFee() {
+  const base = priceCatalogByCode.get(productionBaseCode);
+  const perComponent = priceCatalogByCode.get(productionPerComponentCode);
+  const componentCount = getProductionComponentCount();
+  const basePrice = base?.price ?? null;
+  const perComponentPrice = perComponent?.price ?? null;
+
+  return {
+    componentCount,
+    basePrice,
+    perComponentPrice,
+    total: basePrice === null || perComponentPrice === null
+      ? null
+      : basePrice + perComponentPrice * componentCount,
+    deliveryDays: base?.deliveryDays ?? null,
+  };
+}
 
 function updatePriceEstimate() {
   if (!priceEstimateEl || !deliveryEstimateEl || !priceEstimateNoteEl) return;
@@ -1232,6 +1261,20 @@ function updatePriceEstimate() {
       hasDeliveryData = true;
     }
   });
+
+  const productionFee = getProductionFee();
+  if (productionFee.total === null) {
+    missingItems.add(productionBaseCode);
+    missingItems.add(productionPerComponentCode);
+  } else {
+    totalPrice += productionFee.total;
+  }
+  if (productionFee.deliveryDays === null) {
+    missingItems.add(productionBaseCode);
+  } else {
+    longestDelivery = Math.max(longestDelivery, productionFee.deliveryDays);
+    hasDeliveryData = true;
+  }
 
   priceEstimateEl.textContent = pricedItems > 0 ? estimateCurrency.format(totalPrice) : 'Nog niet bekend';
   deliveryEstimateEl.textContent = hasDeliveryData ? `${longestDelivery} dagen` : 'Nog niet bekend';
@@ -1804,8 +1847,13 @@ const step5NextBtn = document.getElementById('step5-next-btn') as HTMLButtonElem
 const step6BackBtn = document.getElementById('step6-back-btn') as HTMLButtonElement | null;
 const step6NextBtn = document.getElementById('step6-next-btn') as HTMLButtonElement | null;
 const orderPage = document.getElementById('order-page');
-const orderSummary = document.getElementById('order-summary');
-const orderForm = document.getElementById('order-form') as HTMLFormElement | null;
+const cartItemsBody = document.getElementById('cart-items');
+const cartItemCount = document.getElementById('cart-item-count');
+const cartCabinet = document.getElementById('cart-cabinet');
+const cartVoltage = document.getElementById('cart-voltage');
+const cartDelivery = document.getElementById('cart-delivery');
+const cartTotalValue = document.getElementById('cart-total-value');
+const cartPriceNote = document.getElementById('cart-price-note');
 const orderBackBtn = document.getElementById('order-back-btn') as HTMLButtonElement | null;
 const orderTitle = document.getElementById('order-title') as HTMLHeadingElement | null;
 
@@ -1835,18 +1883,32 @@ if (step5BackBtn) step5BackBtn.addEventListener('click', () => {
 if (step5NextBtn) step5NextBtn.addEventListener('click', () => showStep(6));
 if (step6BackBtn) step6BackBtn.addEventListener('click', () => showStep(5));
 
-function getOrderSummaryItems(): Array<[string, string]> {
-  const items: Array<[string, string]> = [
-    ['Kastbehuizing', configuratorState.selectedCabinet?.name || 'Niet gekozen'],
-  ];
-  if (configuratorState.selectedDoor) items.push(['Deur', configuratorState.selectedDoor.name]);
-  if (configuratorState.voltage) items.push(['Spanning', configuratorState.voltage]);
+interface CartLineItem {
+  code: string;
+  name: string;
+  details: string;
+  quantity: number;
+  unitPrice: number | null;
+  isProductionFee?: boolean;
+}
 
-  const selectedCabinetCode = configuratorState.selectedCabinet?.id;
-  const configuredItems = [...getConfiguredItemQuantities()]
-    .filter(([code]) => code !== selectedCabinetCode)
-    .map(([code, count]) => `${code} x ${count}`);
-  items.push(['Onderdelen (artikelcode x aantal)', configuredItems.join(', ') || 'Geen']);
+function getCartLineItems(): CartLineItem[] {
+  const items: CartLineItem[] = [...getConfiguredItemQuantities()].map(([code, quantity]) => {
+    const product = productByCode.get(code);
+    const specifications = product
+      ? Object.entries(product.properties)
+        .filter(([, value]) => value !== 0 && value !== '')
+        .slice(0, 2)
+        .map(([key, value]) => `${key}: ${value}`)
+      : [];
+    return {
+      code,
+      name: product ? `${product.brand ? `${product.brand} ` : ''}${product.category}` : code,
+      details: specifications.join(' · '),
+      quantity,
+      unitPrice: product?.price ?? null,
+    };
+  });
 
   const featureLabels: Record<keyof ConfiguratorState['features'], string> = {
     lighting: 'Verlichting',
@@ -1854,34 +1916,113 @@ function getOrderSummaryItems(): Array<[string, string]> {
     ventilation: 'Ventilatie',
   };
   Object.entries(configuratorState.features).forEach(([key, value]) => {
-    items.push([featureLabels[key as keyof ConfiguratorState['features']], value]);
+    if (value === 'Ja') {
+      items.push({
+        code: '',
+        name: featureLabels[key as keyof ConfiguratorState['features']],
+        details: 'Geselecteerde voorziening',
+        quantity: 1,
+        unitPrice: null,
+      });
+    }
   });
 
   const componentCounts = new Map<string, number>();
   getAllMountedComponents().forEach((component) => {
     componentCounts.set(component.name, (componentCounts.get(component.name) || 0) + 1);
   });
-  if (componentCounts.size > 0) {
-    items.push(['Extra componenten', [...componentCounts].map(([name, count]) => `${name}: ${count}`).join(', ')]);
-  }
+  componentCounts.forEach((quantity, name) => {
+    items.push({ code: '', name, details: 'Handmatig toegevoegd · geen artikelcode', quantity, unitPrice: null });
+  });
 
+  const productionFee = getProductionFee();
+  const productionDetails = productionFee.total === null
+    ? 'Productietarieven niet beschikbaar'
+    : `Basis ${estimateCurrency.format(productionFee.basePrice || 0)} + ${productionFee.componentCount} componenten × ${estimateCurrency.format(productionFee.perComponentPrice || 0)}`;
+  items.push({
+    code: '',
+    name: 'Productietarief',
+    details: productionDetails,
+    quantity: 1,
+    unitPrice: productionFee.total,
+    isProductionFee: true,
+  });
   return items;
 }
 
 function renderOrderSummary() {
-  if (!orderSummary) return;
+  if (!cartItemsBody) return;
+  const cartItems = getCartLineItems();
+  let knownSubtotal = 0;
+  let unknownPriceCount = 0;
+  let longestDelivery = 0;
+  let unknownDeliveryCount = 0;
+  const productionFee = getProductionFee();
   const fragment = document.createDocumentFragment();
-  getOrderSummaryItems().forEach(([label, value]) => {
-    const row = document.createElement('div');
-    row.className = 'order-summary-row';
-    const term = document.createElement('dt');
-    term.textContent = label;
-    const description = document.createElement('dd');
-    description.textContent = value;
-    row.append(term, description);
+
+  cartItems.forEach((item) => {
+    const row = document.createElement('tr');
+    const productCell = document.createElement('td');
+    productCell.className = 'cart-product-cell';
+    const name = document.createElement('strong');
+    name.textContent = item.name;
+    productCell.appendChild(name);
+    if (item.code) {
+      const code = document.createElement('small');
+      code.textContent = item.code;
+      productCell.appendChild(code);
+    }
+    if (item.details) {
+      const details = document.createElement('small');
+      details.className = 'cart-product-details';
+      details.textContent = item.details;
+      productCell.appendChild(details);
+    }
+
+    const quantityCell = document.createElement('td');
+    quantityCell.className = 'cart-number-cell';
+    quantityCell.textContent = String(item.quantity);
+    const unitPriceCell = document.createElement('td');
+    unitPriceCell.className = 'cart-number-cell';
+    unitPriceCell.textContent = item.unitPrice === null ? 'Op aanvraag' : estimateCurrency.format(item.unitPrice);
+    const subtotalCell = document.createElement('td');
+    subtotalCell.className = 'cart-number-cell cart-line-total';
+    subtotalCell.textContent = item.unitPrice === null
+      ? 'Op aanvraag'
+      : estimateCurrency.format(item.unitPrice * item.quantity);
+
+    if (item.unitPrice === null) {
+      row.classList.add('cart-item-unpriced');
+      unknownPriceCount += item.quantity;
+    } else {
+      knownSubtotal += item.unitPrice * item.quantity;
+    }
+    const delivery = item.isProductionFee
+      ? productionFee.deliveryDays
+      : priceCatalogByCode.get(item.code)?.deliveryDays;
+    if (delivery === null || delivery === undefined) unknownDeliveryCount += 1;
+    else longestDelivery = Math.max(longestDelivery, delivery);
+
+    row.append(productCell, quantityCell, unitPriceCell, subtotalCell);
     fragment.appendChild(row);
   });
-  orderSummary.replaceChildren(fragment);
+
+  cartItemsBody.replaceChildren(fragment);
+  const totalQuantity = cartItems.reduce((total, item) => total + (item.isProductionFee ? 0 : item.quantity), 0);
+  if (cartItemCount) cartItemCount.textContent = `${totalQuantity} ${totalQuantity === 1 ? 'artikel' : 'artikelen'}`;
+  if (cartCabinet) cartCabinet.textContent = configuratorState.selectedCabinet?.name || 'Niet gekozen';
+  if (cartVoltage) cartVoltage.textContent = configuratorState.voltage || 'Niet gekozen';
+  if (cartDelivery) {
+    cartDelivery.textContent = unknownDeliveryCount > 0
+      ? longestDelivery > 0 ? `Vanaf ${longestDelivery} dagen` : 'Op aanvraag'
+      : `${longestDelivery} dagen`;
+  }
+  if (cartTotalValue) cartTotalValue.textContent = estimateCurrency.format(knownSubtotal);
+  if (cartPriceNote) {
+    cartPriceNote.textContent = unknownPriceCount > 0
+      ? `${unknownPriceCount} ${unknownPriceCount === 1 ? 'artikel' : 'artikelen'} hebben een prijs op aanvraag. Dit is het subtotaal van de bekende prijzen.`
+      : 'Alle artikelprijzen zijn beschikbaar.';
+  }
 }
 
 step6NextBtn?.addEventListener('click', () => {
@@ -1898,28 +2039,6 @@ orderBackBtn?.addEventListener('click', () => {
   window.dispatchEvent(new Event('resize'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
   step6NextBtn?.focus();
-});
-
-orderForm?.addEventListener('submit', (event) => {
-  event.preventDefault();
-  const formData = new FormData(orderForm);
-  const fieldValue = (name: string) => String(formData.get(name) || '').trim();
-  const body = [
-    'Aanvraag schakelkastconfiguratie',
-    '',
-    ...getOrderSummaryItems().map(([label, value]) => `${label}: ${value}`),
-    '',
-    'Contactgegevens',
-    `Naam: ${fieldValue('contactName')}`,
-    `Bedrijf: ${fieldValue('company') || 'Niet opgegeven'}`,
-    `E-mailadres: ${fieldValue('contactEmail')}`,
-    `Telefoonnummer: ${fieldValue('telephone') || 'Niet opgegeven'}`,
-    '',
-    'Opmerking:',
-    fieldValue('notes') || 'Geen',
-  ].join('\n');
-  const subject = encodeURIComponent('Aanvraag schakelkastconfiguratie');
-  window.location.href = `mailto:veenendaal@hoppenbrouwers.nl?subject=${subject}&body=${encodeURIComponent(body)}`;
 });
 
 updateNextButtonStates();
